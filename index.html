@@ -1,0 +1,3156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Spaceships 3 - Cosmic Shooter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #040712;
+      color: #e2e8f0;
+      font-family: 'Rajdhani', sans-serif;
+    }
+    .font-hud {
+      font-family: 'Orbitron', monospace;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background-color: #030611;
+      touch-action: none;
+    }
+    .glow-cyan {
+      box-shadow: 0 0 18px rgba(6, 182, 212, 0.45);
+    }
+    .glow-amber {
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.45);
+    }
+    .glow-crimson {
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.45);
+    }
+    .glow-purple {
+      box-shadow: 0 0 18px rgba(168, 85, 247, 0.45);
+    }
+    .neon-text-cyan {
+      text-shadow: 0 0 10px rgba(6, 182, 212, 0.7);
+    }
+    .neon-text-amber {
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.7);
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.4);
+      border-radius: 9999px;
+    }
+    .glass-panel {
+      background: rgba(11, 19, 38, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+    }
+  </style>
+</head>
+<body class="relative w-full h-full">
+
+  <canvas id="gameCanvas" class="absolute inset-0 z-0"></canvas>
+
+  <!-- TELA DE INTRODUÇÃO E PRÉ-CARREGAMENTO -->
+  <div id="introScreen" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#040714] transition-opacity duration-700 p-6">
+    <div class="max-w-md w-full flex flex-col items-center text-center">
+      <!-- Fallback com suporte a imagem física -->
+      <div class="h-20 flex items-center justify-center mb-4">
+        <img id="studioLogoImg" src="png/studio-logo.png" alt="Studio Logo" class="max-h-16 object-contain hidden" onerror="this.classList.add('hidden'); document.getElementById('studioFallback').classList.remove('hidden');">
+        <div id="studioFallback" class="flex items-center space-x-3 text-cyan-400">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <span class="font-hud tracking-widest text-base font-bold">STELLAR FORGE STUDIOS</span>
+        </div>
+      </div>
+
+      <div class="h-28 flex items-center justify-center mb-6">
+        <img id="gameLogoImg" src="png/game-logo.png" alt="Spaceships 3 Logo" class="max-h-24 object-contain hidden" onerror="this.classList.add('hidden'); document.getElementById('gameFallback').classList.remove('hidden');">
+        <div id="gameFallback" class="text-center">
+          <h1 class="font-hud text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 neon-text-cyan">SPACESHIPS 3</h1>
+          <p class="text-xs uppercase tracking-[0.4em] text-slate-400 mt-1">Galactic Recon Vanguard</p>
+        </div>
+      </div>
+
+      <!-- Barra de Carregamento Geral -->
+      <div class="w-full bg-slate-900/90 rounded-full h-3 border border-cyan-500/30 overflow-hidden mb-3 p-[2px]">
+        <div id="loadProgressBar" class="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 rounded-full transition-all duration-300 w-0"></div>
+      </div>
+      <p id="loadStatusText" class="text-xs font-mono text-cyan-300 mb-8 tracking-wider">INDEXANDO SISTEMAS DE VÔO E ÁUDIO...</p>
+
+      <button id="btnStartGame" class="hidden px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-hud font-bold tracking-wider rounded-xl shadow-lg glow-cyan transform hover:-translate-y-0.5 active:translate-y-0 transition">
+        INICIAR SISTEMAS
+      </button>
+    </div>
+  </div>
+
+  <!-- HUD DO JOGO (EM BATALHA) -->
+  <div id="gameHud" class="absolute inset-0 z-10 pointer-events-none hidden flex flex-col justify-between p-3 sm:p-5">
+    <!-- Top HUD: Vida, Escudo, Pontuação e Pausa -->
+    <div class="flex items-start justify-between w-full pointer-events-auto">
+      <!-- Indicadores de Vida & Escudo -->
+      <div class="flex flex-col space-y-1.5 w-44 sm:w-60">
+        <!-- Barra de Vida -->
+        <div class="flex items-center space-x-2">
+          <div class="w-6 h-6 flex items-center justify-center text-rose-400">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/></svg>
+          </div>
+          <div class="flex-1 bg-slate-900/80 h-3 rounded-full border border-rose-500/30 overflow-hidden p-0.5">
+            <div id="hudHpBar" class="h-full bg-gradient-to-r from-rose-600 to-red-400 rounded-full transition-all duration-150" style="width: 100%;"></div>
+          </div>
+          <span id="hudHpText" class="text-xs font-hud font-bold text-rose-300 w-12 text-right">100/100</span>
+        </div>
+        <!-- Barra de Escudo -->
+        <div class="flex items-center space-x-2">
+          <div class="w-6 h-6 flex items-center justify-center text-cyan-400">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" clip-rule="evenodd"/></svg>
+          </div>
+          <div class="flex-1 bg-slate-900/80 h-2.5 rounded-full border border-cyan-500/30 overflow-hidden p-0.5">
+            <div id="hudShieldBar" class="h-full bg-gradient-to-r from-cyan-600 to-sky-300 rounded-full transition-all duration-150" style="width: 100%;"></div>
+          </div>
+          <span id="hudShieldText" class="text-xs font-hud font-bold text-cyan-300 w-12 text-right">60/60</span>
+        </div>
+        <!-- Status de Canhões e Buffs -->
+        <div class="flex items-center justify-between text-[11px] font-mono text-slate-300 pl-8">
+          <span id="hudWeaponLevel" class="text-amber-400 font-bold">ARMA: MK-1</span>
+          <span id="hudActiveBuff" class="text-purple-400 font-bold hidden">BUFF ATIVO</span>
+        </div>
+      </div>
+
+      <!-- Barra Central de Chefe -->
+      <div id="hudBossContainer" class="hidden flex flex-col items-center w-48 sm:w-80">
+        <div class="flex items-center justify-between w-full text-xs font-hud font-bold text-rose-400 mb-1">
+          <span id="hudBossName">DREADNOUGHT VORTEX</span>
+          <span id="hudBossHpText">100%</span>
+        </div>
+        <div class="w-full bg-slate-950 h-3 rounded-full border border-rose-500/50 p-0.5 glow-crimson">
+          <div id="hudBossHpBar" class="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 rounded-full transition-all duration-150 w-full"></div>
+        </div>
+      </div>
+
+      <!-- Placar, Moedas e Botão de Pausa -->
+      <div class="flex items-center space-x-3 sm:space-x-4">
+        <!-- Indicador de FPS -->
+        <div id="hudFpsCounter" class="hidden text-[10px] font-mono text-emerald-400 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-700">60 FPS</div>
+
+        <div class="text-right">
+          <div class="text-[10px] uppercase font-mono tracking-widest text-slate-400">PONTOS</div>
+          <div id="hudScore" class="font-hud text-base sm:text-xl font-black text-cyan-300">000000</div>
+        </div>
+
+        <div class="flex flex-col items-end space-y-0.5">
+          <div class="flex items-center space-x-1.5 text-amber-400">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z"/></svg>
+            <span id="hudCoins" class="font-hud text-xs sm:text-sm font-bold">0</span>
+          </div>
+          <div class="flex items-center space-x-1.5 text-emerald-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l8 6-8 14L4 8l8-6z"/></svg>
+            <span id="hudGems" class="font-hud text-xs sm:text-sm font-bold">0</span>
+          </div>
+        </div>
+
+        <!-- Botão Pausa -->
+        <button id="btnPause" class="p-2 sm:p-2.5 bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-cyan-400 border border-slate-700/60 rounded-xl transition">
+          <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom HUD: Controles mobile, joystick virtual e botões manuais -->
+    <div class="flex items-end justify-between w-full pointer-events-auto pb-1">
+      <!-- Joystick Virtual (Toque) -->
+      <div id="touchJoyZone" class="w-28 h-28 sm:w-32 sm:h-32 relative opacity-80 border-2 border-cyan-500/30 rounded-full flex items-center justify-center bg-slate-950/40 backdrop-blur-sm">
+        <div id="touchJoyKnob" class="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-600 to-sky-400 shadow-lg glow-cyan border border-cyan-200 absolute transform transition-transform pointer-events-none"></div>
+      </div>
+
+      <!-- Controles de Ação do Piloto -->
+      <div class="flex items-center space-x-2.5 sm:space-x-3.5">
+        <!-- Bomba EMP / Limpador de Tela -->
+        <button id="btnBombSkill" class="relative group p-3 sm:p-4 rounded-2xl bg-gradient-to-tr from-amber-900/80 to-red-800/80 border border-amber-400/40 hover:border-amber-300 transition overflow-hidden">
+          <span id="hudBombCount" class="absolute top-1 right-2 text-[10px] font-mono font-bold text-amber-300">1</span>
+          <div class="flex flex-col items-center">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span class="text-[8px] font-hud uppercase tracking-wider text-amber-200 mt-0.5 font-bold">EMP (E)</span>
+          </div>
+        </button>
+
+        <!-- Habilidade Especial / Sobrecarga -->
+        <button id="btnSpecialSkill" class="relative group p-3.5 sm:p-4 rounded-2xl bg-gradient-to-tr from-purple-900/80 to-indigo-800/80 border border-purple-400/40 hover:border-purple-300 transition overflow-hidden">
+          <div id="specialCooldownOverlay" class="absolute inset-0 bg-slate-950/85 transition-all duration-100" style="height: 0%;"></div>
+          <div class="relative z-10 flex flex-col items-center">
+            <svg class="w-6 h-6 sm:w-7 sm:h-7 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="text-[9px] font-hud uppercase tracking-wider text-purple-200 mt-0.5 font-bold">OVERDRIVE</span>
+          </div>
+        </button>
+
+        <!-- Botão de Disparo Manual -->
+        <button id="btnManualShoot" class="p-4 sm:p-5 rounded-2xl bg-gradient-to-tr from-cyan-600/90 to-blue-700/90 border border-cyan-300/50 hover:border-cyan-200 active:scale-95 transition flex flex-col items-center shadow-lg glow-cyan">
+          <svg class="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          <span class="text-[9px] font-hud uppercase tracking-wider text-cyan-100 mt-1 font-bold">DISPARO</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENU PRINCIPAL -->
+  <div id="mainMenuScreen" class="absolute inset-0 z-20 flex flex-col justify-between p-6 sm:p-10 pointer-events-auto hidden">
+    <!-- Cabeçalho Superior -->
+    <div class="flex items-center justify-between w-full">
+      <div class="flex items-center space-x-3">
+        <div class="w-12 h-12 rounded-xl bg-slate-900 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-md">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span id="menuPilotName" class="font-hud font-bold text-slate-100 text-sm sm:text-base">COMANDANTE ORION</span>
+            <span id="menuPilotRankBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-900/60 border border-cyan-400/30 text-cyan-300 font-mono">RANK I</span>
+          </div>
+          <div class="flex items-center space-x-2 text-xs text-slate-400 font-mono mt-0.5">
+            <span>NÍVEL <span id="menuPilotLevel" class="text-cyan-400 font-bold">1</span></span>
+            <div class="w-24 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div id="menuPilotXpBar" class="bg-cyan-400 h-full w-1/4"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Moedas & Gemas -->
+      <div class="flex items-center space-x-3 sm:space-x-4">
+        <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center space-x-2 border-amber-500/30">
+          <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z"/></svg>
+          <span id="menuCoinsText" class="font-hud font-bold text-amber-400 text-sm sm:text-base">1500</span>
+        </div>
+        <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center space-x-2 border-emerald-500/30">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l8 6-8 14L4 8l8-6z"/></svg>
+          <span id="menuGemsText" class="font-hud font-bold text-emerald-400 text-sm sm:text-base">20</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Centro: Título e Botão de Ação Primária -->
+    <div class="flex flex-col items-center justify-center my-auto text-center">
+      <div class="mb-2">
+        <span class="text-xs font-mono uppercase tracking-[0.5em] text-cyan-400/90">FROTA ESPACIAL HUMANA</span>
+      </div>
+      <h1 class="font-hud text-5xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-100 to-cyan-400 tracking-wider neon-text-cyan mb-2">
+        SPACESHIPS 3
+      </h1>
+      <p class="text-slate-400 text-xs sm:text-sm font-mono max-w-sm mb-7">
+        Setor de Combate 03. Defenda o quadrante estelar contra as frotas autônomas.
+      </p>
+
+      <!-- Botão Jogar Grande -->
+      <button id="btnPlayMain" class="px-12 py-5 bg-gradient-to-r from-cyan-500 via-sky-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 font-hud text-lg sm:text-xl font-black tracking-widest rounded-2xl shadow-2xl glow-cyan transform hover:scale-105 active:scale-95 transition-all">
+        INICIAR MISSÃO
+      </button>
+
+      <!-- Recorde Atual -->
+      <div class="mt-5 flex items-center space-x-2 text-xs font-mono text-slate-400">
+        <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        <span>RECORDE:</span>
+        <span id="menuHighScoreText" class="font-hud font-bold text-amber-400">000000</span>
+      </div>
+    </div>
+
+    <!-- Barra de Navegação Inferior (Menu Hub com Online e Upgrades) -->
+    <div class="grid grid-cols-4 sm:grid-cols-7 gap-2 max-w-4xl mx-auto w-full">
+      <button id="navBtnHangar" class="glass-panel hover:bg-cyan-950/40 p-2 sm:p-2.5 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-cyan-300 transition group">
+        <svg class="w-5 h-5 mb-1 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        <span class="text-[10px] font-hud font-bold">HANGAR</span>
+      </button>
+
+      <button id="navBtnStore" class="glass-panel hover:bg-amber-950/40 p-2 sm:p-2.5 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-amber-300 transition group">
+        <svg class="w-5 h-5 mb-1 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        <span class="text-[10px] font-hud font-bold">LOJA</span>
+      </button>
+
+      <button id="navBtnUpgrades" class="glass-panel hover:bg-emerald-950/40 p-2 sm:p-2.5 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-emerald-300 transition group">
+        <svg class="w-5 h-5 mb-1 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        <span class="text-[10px] font-hud font-bold">UPGRADES</span>
+      </button>
+
+      <button id="navBtnOnline" class="glass-panel hover:bg-blue-950/40 p-2 sm:p-2.5 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-blue-300 transition group relative">
+        <span class="absolute -top-1 -right-1 bg-blue-600 text-[8px] font-bold px-1 py-0.2 rounded-full">LIVE</span>
+        <svg class="w-5 h-5 mb-1 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+        <span class="text-[10px] font-hud font-bold">ONLINE</span>
+      </button>
+
+      <button id="navBtnPilot" class="glass-panel hover:bg-indigo-950/40 p-2 sm:p-2.5 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-indigo-300 transition group">
+        <svg class="w-5 h-5 mb-1 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span class="text-[10px] font-hud font-bold">PILOTO</span>
+      </button>
+
+      <button id="navBtnCopilot" class="glass-panel hover:bg-purple-950/40 p-2 sm:p-2.5 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-purple-300 transition group">
+        <svg class="w-5 h-5 mb-1 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        <span class="text-[10px] font-hud font-bold">COPILOTO</span>
+      </button>
+
+      <button id="navBtnConfig" class="glass-panel hover:bg-slate-800/60 p-2 sm:p-2.5 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:text-slate-100 transition group">
+        <svg class="w-5 h-5 mb-1 group-hover:scale-110 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span class="text-[10px] font-hud font-bold">AJUSTES</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: HANGAR DA FROTA COM PREVIEWS 2D EM TEMPO REAL -->
+  <div id="hangarModal" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md hidden flex flex-col p-4 sm:p-8">
+    <div class="flex items-center justify-between border-b border-cyan-500/30 pb-4 max-w-6xl mx-auto w-full">
+      <div class="flex items-center space-x-3">
+        <svg class="w-7 h-7 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        <h2 class="font-hud text-xl sm:text-2xl font-black text-cyan-300">HANGAR DA FROTA ESTELAR</h2>
+      </div>
+      <button onclick="closeCurrentModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Lista de Naves com Preview Canvas -->
+    <div class="max-w-6xl mx-auto w-full flex-1 overflow-y-auto py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="hangarShipList">
+      <!-- Inserido dinamicamente via JS -->
+    </div>
+  </div>
+
+  <!-- MODAL: LOJA E SUPRIMENTOS GLOBAIS -->
+  <div id="storeModal" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md hidden flex flex-col p-4 sm:p-8">
+    <div class="flex items-center justify-between border-b border-amber-500/30 pb-4 max-w-5xl mx-auto w-full">
+      <div class="flex items-center space-x-3">
+        <svg class="w-7 h-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+        <h2 class="font-hud text-xl sm:text-2xl font-black text-amber-300">ESTAÇÃO DE SUPRIMENTOS FEDERATIVOS</h2>
+      </div>
+      <button onclick="closeCurrentModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="max-w-5xl mx-auto w-full flex-1 overflow-y-auto py-6 space-y-6">
+      <!-- MÓDULO VISUAL DE PATROCÍNIO (ESPAÇO RESERVADO DE ANÚNCIO / SEM BLOQUEIO FORÇADO) -->
+      <div class="glass-panel p-5 rounded-2xl border-indigo-500/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-950/70 border border-indigo-400/50 flex items-center justify-center text-indigo-300">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-indigo-900/60 border border-indigo-400/30 text-indigo-300">ESPAÇO PUBLICITÁRIO SDK</span>
+              <span class="text-[10px] font-mono text-emerald-400">STATUS: PRONTO P/ INTEGRAÇÃO</span>
+            </div>
+            <h3 class="font-hud font-bold text-base text-slate-100 mt-1">TRANSMISSÃO DE SUPORTE DA FEDERAÇÃO</h3>
+            <p class="text-xs text-slate-400">Espaço visual homologado para anúncios premiados com +500 Moedas e +2 Gemas.</p>
+          </div>
+        </div>
+        <button id="btnTestAdReward" class="px-5 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-hud font-bold text-xs rounded-xl shadow-lg glow-purple whitespace-nowrap">
+          SIMULAR RECOMPENSA DE TESTE (+500 MOEDAS)
+        </button>
+      </div>
+
+      <!-- Itens de Tecnologia e Upgrades Globais -->
+      <h3 class="font-hud font-bold text-sm tracking-wider text-amber-400 uppercase">TECNOLOGIAS E DROPS PERMANENTES</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="storeUpgradesGrid">
+        <!-- Inseridos por script -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: OFICINA DE UPGRADES DA NAVE -->
+  <div id="upgradesModal" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md hidden flex flex-col p-4 sm:p-8">
+    <div class="flex items-center justify-between border-b border-emerald-500/30 pb-4 max-w-5xl mx-auto w-full">
+      <div class="flex items-center space-x-3">
+        <svg class="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        <h2 class="font-hud text-xl sm:text-2xl font-black text-emerald-300">OFICINA TÉCNICA DA NAVE ATIVA</h2>
+      </div>
+      <button onclick="closeCurrentModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="max-w-5xl mx-auto w-full flex-1 overflow-y-auto py-6 space-y-6">
+      <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-5 border-emerald-500/30">
+        <div class="flex items-center space-x-4">
+          <canvas id="upgradePreviewCanvas" width="90" height="90" class="rounded-xl bg-slate-950/60 border border-slate-700"></canvas>
+          <div>
+            <span class="text-[10px] font-mono text-emerald-400 uppercase tracking-wider font-bold">NAVE SELECIONADA</span>
+            <h3 id="upgradeShipName" class="font-hud text-xl font-black text-white">AURORA MK-I</h3>
+            <p id="upgradeShipRole" class="text-xs text-slate-400">Interceptador Balanceado</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <span class="text-xs font-mono text-slate-400">NÍVEL DE BLINDAGEM DA NAVE:</span>
+          <p id="upgradeShipLvlBadge" class="font-hud text-xl font-black text-amber-400">MK-1 (MAX MK-5)</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="shipSpecificUpgradesGrid">
+        <!-- Componentes específicos da nave injetados via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MODO ONLINE (SISTEMA MULTIPLAYER VISUAL COMPLETO) -->
+  <div id="onlineModal" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md hidden flex flex-col p-4 sm:p-8">
+    <div class="flex items-center justify-between border-b border-blue-500/30 pb-4 max-w-5xl mx-auto w-full">
+      <div class="flex items-center space-x-3">
+        <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+        <div>
+          <h2 class="font-hud text-xl sm:text-2xl font-black text-blue-300">REDE FEDERATIVA ONLINE</h2>
+          <span class="text-[10px] font-mono text-emerald-400">SERVIDOR CENTRAL: ONLINE (PING: 24ms)</span>
+        </div>
+      </div>
+      <button onclick="closeCurrentModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="max-w-5xl mx-auto w-full flex-1 overflow-y-auto py-6 space-y-6">
+      <!-- Navegação das sub-abas do Online -->
+      <div class="flex space-x-2 border-b border-slate-800 pb-3">
+        <button id="tabBtnLobby" class="px-4 py-2 bg-blue-950/60 border border-blue-400/40 text-blue-300 rounded-xl font-hud text-xs font-bold">LOBBY DE SALAS</button>
+        <button id="tabBtnCreateRoom" class="px-4 py-2 glass-panel text-slate-300 hover:text-white rounded-xl font-hud text-xs font-bold">CRIAR SALA</button>
+        <button id="tabBtnRanking" class="px-4 py-2 glass-panel text-slate-300 hover:text-white rounded-xl font-hud text-xs font-bold">RANKING GLOBAL</button>
+      </div>
+
+      <!-- Aba 1: Lobby & Entrar com Código -->
+      <div id="onlineLobbyView" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Partida Rápida -->
+          <div class="glass-panel p-5 rounded-2xl border-blue-500/30 flex flex-col justify-between">
+            <div>
+              <h3 class="font-hud text-base font-bold text-white mb-1">PARTIDA RÁPIDA (MATCHMAKING)</h3>
+              <p class="text-xs text-slate-400 mb-4">Emparelhe automaticamente com outros pilotos no mesmo nível de patente estelar.</p>
+            </div>
+            <button id="btnQuickMatch" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-hud font-bold text-xs rounded-xl shadow-lg glow-cyan transition">
+              BUSCAR ESQUADRÃO (CO-OP 2P)
+            </button>
+          </div>
+
+          <!-- Entrar com Código -->
+          <div class="glass-panel p-5 rounded-2xl border-blue-500/30 flex flex-col justify-between">
+            <div>
+              <h3 class="font-hud text-base font-bold text-white mb-1">ENTRAR COM CÓDIGO DA SALA</h3>
+              <p class="text-xs text-slate-400 mb-3">Digite a frequência ou código de 6 dígitos gerado pelo líder da esquadra.</p>
+              <input type="text" id="inputRoomCode" placeholder="Ex: NOVA-42" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-cyan-300 uppercase tracking-widest font-mono font-bold mb-3 focus:outline-none focus:border-cyan-400">
+            </div>
+            <button id="btnJoinWithCode" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-hud font-bold text-xs rounded-xl border border-cyan-500/20 transition">
+              CONECTAR AO CÓDIGO
+            </button>
+          </div>
+        </div>
+
+        <!-- Lista de Salas Ativas -->
+        <h4 class="font-hud text-xs font-bold tracking-wider text-slate-300 uppercase pt-2">SALAS DISPONÍVEIS NA REGIÃO</h4>
+        <div class="space-y-2">
+          <div class="glass-panel p-3.5 rounded-xl flex items-center justify-between border-slate-800">
+            <div class="flex items-center space-x-3">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div>
+                <span class="font-hud text-xs font-bold text-white">SETOR VORTEX [CO-OP]</span>
+                <span class="text-[10px] font-mono text-slate-400 block">Host: Capitão Drake | Setor 03</span>
+              </div>
+            </div>
+            <div class="flex items-center space-x-4">
+              <span class="text-xs font-mono text-slate-300">1 / 2 Pilotos</span>
+              <button onclick="mockJoinRoom('SETOR VORTEX')" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-hud text-xs rounded-lg">ENTRAR</button>
+            </div>
+          </div>
+
+          <div class="glass-panel p-3.5 rounded-xl flex items-center justify-between border-slate-800">
+            <div class="flex items-center space-x-3">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div>
+                <span class="font-hud text-xs font-bold text-white">DUELO TÁTICO 1V1</span>
+                <span class="text-[10px] font-mono text-slate-400 block">Host: Piloto Nova | Setor Hiperespacial</span>
+              </div>
+            </div>
+            <div class="flex items-center space-x-4">
+              <span class="text-xs font-mono text-slate-300">1 / 2 Pilotos</span>
+              <button onclick="mockJoinRoom('DUELO TÁTICO')" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-hud text-xs rounded-lg">ENTRAR</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba 2: Criar Sala -->
+      <div id="onlineCreateView" class="hidden space-y-4">
+        <div class="glass-panel p-6 rounded-2xl border-blue-500/30 max-w-xl mx-auto space-y-4">
+          <h3 class="font-hud text-lg font-bold text-white">CONFIGURAR NOVA SALA</h3>
+          <div>
+            <label class="text-xs font-mono text-slate-400 block mb-1">NOME DA SALA</label>
+            <input type="text" id="createRoomName" value="ESQUADRÃO ALFA" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-cyan-300 font-mono font-bold">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-mono text-slate-400 block mb-1">MODO DE JOGO</label>
+              <select class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono">
+                <option>CO-OP DEFESA (2 JOGADORES)</option>
+                <option>DUELO ESTELAR (1V1)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-mono text-slate-400 block mb-1">PRIVACIDADE</label>
+              <select class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono">
+                <option>PÚBLICA (Qualquer um)</option>
+                <option>PRIVADA (Apenas com Código)</option>
+              </select>
+            </div>
+          </div>
+          <button id="btnConfirmCreateRoom" class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-950 font-hud font-black text-xs rounded-xl shadow-lg glow-cyan transition">
+            ABRIR FREQUÊNCIA DA SALA
+          </button>
+        </div>
+      </div>
+
+      <!-- Aba 3: Ranking Global -->
+      <div id="onlineRankingView" class="hidden space-y-3">
+        <div class="glass-panel p-4 rounded-xl flex items-center justify-between border-amber-500/30 bg-amber-950/20">
+          <div class="flex items-center space-x-3">
+            <span class="font-hud font-black text-amber-400 text-lg">#1</span>
+            <div>
+              <span class="font-hud font-bold text-white text-sm">ALMIRANTE VALKYR</span>
+              <span class="text-[10px] font-mono text-amber-400 block">Nave: Hyperion Dreadnought</span>
+            </div>
+          </div>
+          <span class="font-hud font-black text-amber-300">452.800 PTS</span>
+        </div>
+        <div class="glass-panel p-4 rounded-xl flex items-center justify-between border-slate-700">
+          <div class="flex items-center space-x-3">
+            <span class="font-hud font-black text-slate-300 text-lg">#2</span>
+            <div>
+              <span class="font-hud font-bold text-white text-sm">COMANDANTE CYGNUS</span>
+              <span class="text-[10px] font-mono text-cyan-400 block">Nave: Phantom Specter</span>
+            </div>
+          </div>
+          <span class="font-hud font-black text-cyan-300">388.100 PTS</span>
+        </div>
+        <div class="glass-panel p-4 rounded-xl flex items-center justify-between border-slate-700">
+          <div class="flex items-center space-x-3">
+            <span class="font-hud font-black text-amber-700 text-lg">#3</span>
+            <div>
+              <span class="font-hud font-bold text-white text-sm">TENENTE PHOENIX</span>
+              <span class="text-[10px] font-mono text-amber-400 block">Nave: Solaris Nova</span>
+            </div>
+          </div>
+          <span class="font-hud font-black text-amber-500">294.400 PTS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRO DO PILOTO -->
+  <div id="pilotModal" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md hidden flex flex-col p-4 sm:p-8">
+    <div class="flex items-center justify-between border-b border-indigo-500/30 pb-4 max-w-4xl mx-auto w-full">
+      <div class="flex items-center space-x-3">
+        <svg class="w-7 h-7 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <h2 class="font-hud text-xl sm:text-2xl font-black text-indigo-300">REGISTRO DO PILOTO</h2>
+      </div>
+      <button onclick="closeCurrentModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="max-w-4xl mx-auto w-full flex-1 overflow-y-auto py-6 space-y-6">
+      <div class="glass-panel p-6 rounded-2xl flex flex-col md:flex-row items-center gap-6">
+        <div class="w-24 h-24 rounded-2xl bg-indigo-950 border-2 border-indigo-400 flex items-center justify-center text-indigo-300 shadow-xl">
+          <svg class="w-14 h-14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </div>
+        <div class="flex-1 text-center md:text-left">
+          <div class="flex flex-col md:flex-row md:items-center justify-between mb-2">
+            <div>
+              <h3 id="profileNameDisplay" class="font-hud text-2xl font-black text-white">COMANDANTE ORION</h3>
+              <p id="profileRankTitle" class="text-xs font-mono text-cyan-400">PATENTE: CADETE DE ASSALTO</p>
+            </div>
+            <div class="mt-2 md:mt-0 px-3 py-1 bg-indigo-950/80 border border-indigo-400/30 rounded-lg text-indigo-300 text-xs font-hud">
+              NÍVEL <span id="profileLevelText">1</span>
+            </div>
+          </div>
+          <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-700 mb-1">
+            <div id="profileXpProgress" class="bg-gradient-to-r from-indigo-500 to-cyan-400 h-full w-1/3"></div>
+          </div>
+          <p id="profileXpRatio" class="text-[10px] font-mono text-slate-400 text-right">180 / 500 XP</p>
+        </div>
+      </div>
+
+      <!-- Estatísticas Detalhadas -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="glass-panel p-4 rounded-xl text-center">
+          <span class="text-xs font-mono text-slate-400">INIMIGOS ABATIDOS</span>
+          <p id="statKills" class="font-hud text-xl font-bold text-rose-400 mt-1">0</p>
+        </div>
+        <div class="glass-panel p-4 rounded-xl text-center">
+          <span class="text-xs font-mono text-slate-400">CHEFES DESTRUÍDOS</span>
+          <p id="statBosses" class="font-hud text-xl font-bold text-amber-400 mt-1">0</p>
+        </div>
+        <div class="glass-panel p-4 rounded-xl text-center">
+          <span class="text-xs font-mono text-slate-400">MISSÕES CUMPRIDAS</span>
+          <p id="statMissions" class="font-hud text-xl font-bold text-emerald-400 mt-1">0</p>
+        </div>
+        <div class="glass-panel p-4 rounded-xl text-center">
+          <span class="text-xs font-mono text-slate-400">MOEDAS ACUMULADAS</span>
+          <p id="statTotalCoins" class="font-hud text-xl font-bold text-cyan-400 mt-1">0</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: COPILOTO (COOPERATIVO LOCAL / DRONES) -->
+  <div id="copilotModal" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md hidden flex flex-col p-4 sm:p-8">
+    <div class="flex items-center justify-between border-b border-purple-500/30 pb-4 max-w-4xl mx-auto w-full">
+      <div class="flex items-center space-x-3">
+        <svg class="w-7 h-7 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        <h2 class="font-hud text-xl sm:text-2xl font-black text-purple-300">PROTOCOLO DE COPILOTO (CO-OP)</h2>
+      </div>
+      <button onclick="closeCurrentModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="max-w-4xl mx-auto w-full flex-1 overflow-y-auto py-6 flex flex-col items-center justify-center text-center space-y-6">
+      <div class="w-20 h-20 rounded-full bg-purple-900/40 border-2 border-purple-400/50 flex items-center justify-center text-purple-300 animate-pulse">
+        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+      </div>
+      <h3 class="font-hud text-2xl font-black text-white">ENLACE TÁTICO DE DRONES COPILOTOS</h3>
+      <p class="text-slate-400 max-w-md text-sm">
+        O sistema de copiloto integrará cooperação com drones de suporte autônomo e modo cooperativo de 2 jogadores.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full text-left max-w-2xl">
+        <div class="glass-panel p-4 rounded-xl border-purple-500/30">
+          <div class="flex items-center space-x-2 text-purple-400 mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            <h4 class="font-hud text-xs font-bold">DRONE PROTETOR</h4>
+          </div>
+          <p class="text-xs text-slate-400">Neutraliza projéteis hostis periodicamente com campo repulsor.</p>
+        </div>
+        <div class="glass-panel p-4 rounded-xl border-purple-500/30">
+          <div class="flex items-center space-x-2 text-purple-400 mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <h4 class="font-hud text-xs font-bold">RADAR AVANÇADO</h4>
+          </div>
+          <p class="text-xs text-slate-400">Amplia taxa de surgimento de drops de gemas e bombas em 30%.</p>
+        </div>
+        <div class="glass-panel p-4 rounded-xl border-purple-500/30">
+          <div class="flex items-center space-x-2 text-purple-400 mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <h4 class="font-hud text-xs font-bold">REDE FEDERATIVA</h4>
+          </div>
+          <p class="text-xs text-slate-400">Dobra os multiplicadores de pontuação obtidos em missões com dupla.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AJUSTES E CONFIGURAÇÕES COMPLETAS -->
+  <div id="settingsModal" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md hidden flex flex-col p-4 sm:p-8">
+    <div class="flex items-center justify-between border-b border-slate-700 pb-4 max-w-2xl mx-auto w-full">
+      <div class="flex items-center space-x-3">
+        <svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <h2 class="font-hud text-xl sm:text-2xl font-black text-slate-100">CONFIGURAÇÕES</h2>
+      </div>
+      <button onclick="closeCurrentModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="max-w-2xl mx-auto w-full flex-1 overflow-y-auto py-6 space-y-5">
+      <!-- Volume de Música -->
+      <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-hud font-bold text-sm text-slate-200">VOLUME DA MÚSICA</h4>
+          <span class="text-xs text-slate-400">Trilha orquestrada e temas de setores</span>
+        </div>
+        <input type="range" id="cfgMusicVolume" min="0" max="100" value="80" class="w-36 accent-cyan-400">
+      </div>
+
+      <!-- Volume de Efeitos -->
+      <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-hud font-bold text-sm text-slate-200">EFEITOS SONOROS (SFX)</h4>
+          <span class="text-xs text-slate-400">Canhões, explosões, escudo e alertas</span>
+        </div>
+        <input type="range" id="cfgSfxVolume" min="0" max="100" value="90" class="w-36 accent-cyan-400">
+      </div>
+
+      <!-- Modo de Disparo Automático -->
+      <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-hud font-bold text-sm text-slate-200">DISPARO AUTOMÁTICO</h4>
+          <span class="text-xs text-slate-400">Quando desligado, requer botão ou clique para disparar</span>
+        </div>
+        <input type="checkbox" id="cfgAutoFire" checked class="w-5 h-5 rounded accent-cyan-500">
+      </div>
+
+      <!-- Modo de Controle Mobile -->
+      <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-hud font-bold text-sm text-slate-200">MODO DE CONTROLE (MOBILE)</h4>
+          <span class="text-xs text-slate-400">Alternar entre Joystick Virtual ou Seguir Toque Livre</span>
+        </div>
+        <select id="cfgControlMode" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-cyan-300 font-mono">
+          <option value="joystick">JOYSTICK VIRTUAL</option>
+          <option value="direct">SEGUIR DEDO DIRETAMENTE</option>
+        </select>
+      </div>
+
+      <!-- Sensibilidade do Joystick -->
+      <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-hud font-bold text-sm text-slate-200">SENSIBILIDADE DE MANOBRA</h4>
+          <span class="text-xs text-slate-400">Velocidade de resposta da nave</span>
+        </div>
+        <input type="range" id="cfgSensitivity" min="5" max="25" value="12" class="w-36 accent-cyan-400">
+      </div>
+
+      <!-- Tremor de Tela -->
+      <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-hud font-bold text-sm text-slate-200">TREMOR DE TELA (SCREEN SHAKE)</h4>
+          <span class="text-xs text-slate-400">Impacto dinâmico de explosões</span>
+        </div>
+        <input type="checkbox" id="cfgScreenShake" checked class="w-5 h-5 rounded accent-cyan-500">
+      </div>
+
+      <!-- Números de Dano Flutuantes -->
+      <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-hud font-bold text-sm text-slate-200">NÚMEROS DE DANO FLUTUANTES</h4>
+          <span class="text-xs text-slate-400">Exibir valores numéricos nos impactos</span>
+        </div>
+        <input type="checkbox" id="cfgDamageNumbers" checked class="w-5 h-5 rounded accent-cyan-500">
+      </div>
+
+      <!-- Exibir Contador de FPS -->
+      <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-hud font-bold text-sm text-slate-200">EXIBIR MEDIDOR DE FPS</h4>
+          <span class="text-xs text-slate-400">Mostra a taxa de quadros em tempo real</span>
+        </div>
+        <input type="checkbox" id="cfgShowFps" class="w-5 h-5 rounded accent-cyan-500">
+      </div>
+
+      <!-- Qualidade Gráfica de Partículas -->
+      <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-hud font-bold text-sm text-slate-200">DENSIDADE DE PARTÍCULAS</h4>
+          <span class="text-xs text-slate-400">Desempenho e economia de bateria</span>
+        </div>
+        <select id="cfgParticlesQuality" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-cyan-300 font-mono">
+          <option value="high">ALTA (60 FPS NATIVO)</option>
+          <option value="low">ECONOMIA (MENOS PARTÍCULAS)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PAUSA -->
+  <div id="pauseModal" class="absolute inset-0 z-40 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-6">
+    <div class="glass-panel p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center border-cyan-500/40 glow-cyan">
+      <h2 class="font-hud text-2xl font-black text-cyan-300 mb-2">MISSÃO EM PAUSA</h2>
+      <p class="text-xs text-slate-400 font-mono mb-6">PROPULSORES EM ESPERA TÁTICA</p>
+
+      <div class="flex flex-col space-y-3">
+        <button id="btnResumeGame" class="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-hud font-bold text-sm rounded-xl transition">
+          RETOMAR VÔO
+        </button>
+        <button id="btnRestartGame" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-hud font-bold text-sm rounded-xl transition">
+          REINICIAR SETOR
+        </button>
+        <button id="btnQuitToMenu" class="w-full py-3 bg-rose-950/60 hover:bg-rose-900 border border-rose-500/30 text-rose-300 font-hud font-bold text-sm rounded-xl transition">
+          ABANDONAR MISSÃO
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: FIM DE PARTIDA COM CALIBRADOR DE TIMING -->
+  <div id="endGameModal" class="absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-lg hidden flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div class="glass-panel p-6 sm:p-8 rounded-3xl max-w-md w-full text-center border-slate-700/60 relative">
+      <!-- Emblema de Vitória / Derrota -->
+      <div id="endGameBadge" class="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-white text-2xl font-black shadow-lg"></div>
+
+      <h2 id="endGameTitle" class="font-hud text-2xl sm:text-3xl font-black text-white mb-1">SETOR CONCLUÍDO</h2>
+      <p id="endGameSubtitle" class="text-xs text-slate-400 font-mono mb-4">DADOS DA MISSÃO REGISTRADOS</p>
+
+      <!-- Resumo da Partida -->
+      <div class="grid grid-cols-2 gap-3 mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+        <div>
+          <span class="text-[10px] font-mono text-slate-400 uppercase">PONTUAÇÃO</span>
+          <p id="endScoreVal" class="font-hud font-bold text-lg text-cyan-300">0000</p>
+        </div>
+        <div>
+          <span class="text-[10px] font-mono text-slate-400 uppercase">MOEDAS OBTIDAS</span>
+          <p id="endCoinsVal" class="font-hud font-bold text-lg text-amber-300">+0</p>
+        </div>
+        <div>
+          <span class="text-[10px] font-mono text-slate-400 uppercase">XP DE PILOTO</span>
+          <p id="endXpVal" class="font-hud font-bold text-lg text-indigo-300">+0</p>
+        </div>
+        <div>
+          <span class="text-[10px] font-mono text-slate-400 uppercase">INIMIGOS ABATIDOS</span>
+          <p id="endKillsVal" class="font-hud font-bold text-lg text-rose-300">0</p>
+        </div>
+      </div>
+
+      <!-- Minigame de Multiplicador por Timing -->
+      <div class="mb-5 p-4 rounded-2xl bg-slate-900/90 border border-cyan-500/30 text-left">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-hud font-bold text-amber-300">CALIBRADOR DE MULTIPLICADOR (1 TENTATIVA)</span>
+          <span id="multiplierResultText" class="text-xs font-hud font-black text-cyan-400">x1.0</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-3">Acerte o ponteiro na zona verde central para multiplicar sua recompensa por x3.5!</p>
+
+        <!-- Barra oscilante com zonas de cores -->
+        <div class="relative w-full h-8 rounded-xl overflow-hidden bg-slate-950 border border-slate-700 flex">
+          <div class="h-full bg-red-600/70" style="width: 25%;"></div>
+          <div class="h-full bg-orange-500/80" style="width: 15%;"></div>
+          <div class="h-full bg-amber-400/90" style="width: 7%;"></div>
+          <div class="h-full bg-emerald-400 shadow-md flex items-center justify-center text-[9px] font-black text-slate-950" style="width: 6%;">x3.5</div>
+          <div class="h-full bg-amber-400/90" style="width: 7%;"></div>
+          <div class="h-full bg-orange-500/80" style="width: 15%;"></div>
+          <div class="h-full bg-red-600/70" style="width: 25%;"></div>
+
+          <!-- Ponteiro oscilante -->
+          <div id="timingNeedle" class="absolute top-0 bottom-0 w-2 bg-white shadow-xl glow-cyan -ml-1 transition-none" style="left: 0%;"></div>
+        </div>
+
+        <button id="btnStopTiming" class="mt-3 w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-hud font-black text-xs uppercase tracking-wider rounded-xl transition">
+          PARAR AGORA
+        </button>
+      </div>
+
+      <div class="flex space-x-3">
+        <button id="btnEndPlayAgain" class="flex-1 py-3.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-hud font-black text-sm rounded-xl transition">
+          NOVA TENTATIVA
+        </button>
+        <button id="btnEndReturnMenu" class="flex-1 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-hud font-bold text-sm rounded-xl transition">
+          MENU PRINCIPAL
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*
+     * GERENCIADOR DE ÁUDIO COMPLETO COM FALLBACK PROCEDURAL WEB AUDIO
+     * Suporte para todos os áudios especificados na pasta audio/
+     */
+    class AudioManager {
+      constructor() {
+        this.ctx = null;
+        this.soundBuffers = {};
+        this.musicAudios = {};
+        this.currentMusicKey = null;
+        this.musicVol = 0.8;
+        this.sfxVol = 0.9;
+        
+        // Mapeamento de sons locais requeridos (áudios originais + novos recomendados)
+        this.sfxPaths = {
+          'click': 'audio/click.mp3',
+          'click2': 'audio/click2.mp3',
+          'error': 'audio/error.mp3',
+          'succes': 'audio/succes.mp3',
+          'buy': 'audio/buy.mp3',
+          'explosion': 'audio/explosion.mp3',
+          'heal': 'audio/heal.mp3',
+          'shield': 'audio/shield.mp3',
+          'shield-break': 'audio/shield-break.mp3',
+          'op-powerup': 'audio/op-powerup.mp3',
+          'victory': 'audio/victory.mp3',
+          'defeat': 'audio/defeat.mp3',
+          'boss-warning': 'audio/boss-warning.mp3',
+          'laser-overdrive': 'audio/laser-overdrive.mp3',
+          'warp-jump': 'audio/warp-jump.mp3',
+          'missile-launch': 'audio/missile-launch.mp3',
+          'coin-jackpot': 'audio/coin-jackpot.mp3',
+          'copilot-radio': 'audio/copilot-radio.mp3',
+          'low-health-alarm': 'audio/low-health-alarm.mp3'
+        };
+
+        this.musicPaths = {
+          'main-menu': 'audio/main-menu.mp3',
+          'store-bkg': 'audio/store-bkg.mp3',
+          'gameplay-song': 'audio/gameplay-song.mp3',
+          'gameplay-song2': 'audio/gameplay-song2.mp3',
+          'gameplay-song3': 'audio/gameplay-song3.mp3',
+          'gameplay-song4': 'audio/gameplay-song4.mp3'
+        };
+      }
+
+      initContext() {
+        if (!this.ctx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            this.ctx = new AudioContextClass();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      async preloadAll(onProgress) {
+        this.initContext();
+        const allKeys = [...Object.keys(this.sfxPaths), ...Object.keys(this.musicPaths)];
+        let loaded = 0;
+
+        for (const key of Object.keys(this.sfxPaths)) {
+          const url = this.sfxPaths[key];
+          try {
+            const resp = await fetch(url);
+            if (resp.ok && this.ctx) {
+              const arrayBuffer = await resp.arrayBuffer();
+              this.soundBuffers[key] = await this.ctx.decodeAudioData(arrayBuffer);
+            }
+          } catch (e) {
+            this.soundBuffers[key] = null;
+          }
+          loaded++;
+          if (onProgress) onProgress(loaded / allKeys.length);
+        }
+
+        for (const key of Object.keys(this.musicPaths)) {
+          try {
+            const audio = new Audio(this.musicPaths[key]);
+            audio.loop = true;
+            audio.volume = this.musicVol;
+            this.musicAudios[key] = audio;
+          } catch (e) {
+            this.musicAudios[key] = null;
+          }
+          loaded++;
+          if (onProgress) onProgress(loaded / allKeys.length);
+        }
+      }
+
+      playSfx(key) {
+        if (!this.ctx) this.initContext();
+        if (this.soundBuffers[key] && this.ctx) {
+          try {
+            const source = this.ctx.createBufferSource();
+            const gain = this.ctx.createGain();
+            source.buffer = this.soundBuffers[key];
+            gain.gain.value = this.sfxVol;
+            source.connect(gain);
+            gain.connect(this.ctx.destination);
+            source.start(0);
+            return;
+          } catch(e) {}
+        }
+        // Fallback procedural Web Audio com zero dependência de arquivos
+        this.synthesizeSfx(key);
+      }
+
+      playMusic(key) {
+        this.initContext();
+        if (this.currentMusicKey === key) return;
+
+        if (this.currentMusicKey && this.musicAudios[this.currentMusicKey]) {
+          try {
+            this.musicAudios[this.currentMusicKey].pause();
+            this.musicAudios[this.currentMusicKey].currentTime = 0;
+          } catch(e) {}
+        }
+
+        this.currentMusicKey = key;
+        const target = this.musicAudios[key];
+        if (target) {
+          target.volume = this.musicVol;
+          const playPromise = target.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+          }
+        }
+      }
+
+      stopMusic() {
+        if (this.currentMusicKey && this.musicAudios[this.currentMusicKey]) {
+          try {
+            this.musicAudios[this.currentMusicKey].pause();
+          } catch(e) {}
+        }
+        this.currentMusicKey = null;
+      }
+
+      setVolumes(music, sfx) {
+        this.musicVol = music;
+        this.sfxVol = sfx;
+        if (this.currentMusicKey && this.musicAudios[this.currentMusicKey]) {
+          this.musicAudios[this.currentMusicKey].volume = this.musicVol;
+        }
+      }
+
+      synthesizeSfx(type) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        const v = Math.max(0.01, this.sfxVol * 0.4);
+
+        switch (type) {
+          case 'click':
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
+            gain.gain.setValueAtTime(v * 0.5, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.04);
+            osc.start(now);
+            osc.stop(now + 0.04);
+            break;
+          case 'click2':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.exponentialRampToValueAtTime(650, now + 0.05);
+            gain.gain.setValueAtTime(v * 0.6, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+            break;
+          case 'error':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(160, now);
+            osc.frequency.setValueAtTime(110, now + 0.1);
+            gain.gain.setValueAtTime(v * 0.7, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.25);
+            osc.start(now);
+            osc.stop(now + 0.25);
+            break;
+          case 'succes':
+          case 'buy':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.setValueAtTime(660, now + 0.08);
+            osc.frequency.setValueAtTime(880, now + 0.16);
+            gain.gain.setValueAtTime(v * 0.7, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.35);
+            osc.start(now);
+            osc.stop(now + 0.35);
+            break;
+          case 'explosion':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(120, now);
+            osc.frequency.exponentialRampToValueAtTime(25, now + 0.4);
+            gain.gain.setValueAtTime(v * 1.2, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.45);
+            osc.start(now);
+            osc.stop(now + 0.45);
+            break;
+          case 'shield':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(950, now + 0.25);
+            gain.gain.setValueAtTime(v * 0.6, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+            break;
+          case 'shield-break':
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(700, now);
+            osc.frequency.exponentialRampToValueAtTime(150, now + 0.35);
+            gain.gain.setValueAtTime(v * 0.9, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.35);
+            osc.start(now);
+            osc.stop(now + 0.35);
+            break;
+          case 'heal':
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(320, now);
+            osc.frequency.exponentialRampToValueAtTime(840, now + 0.3);
+            gain.gain.setValueAtTime(v * 0.6, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.35);
+            osc.start(now);
+            osc.stop(now + 0.35);
+            break;
+          case 'op-powerup':
+          case 'laser-overdrive':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.5);
+            gain.gain.setValueAtTime(v * 0.9, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.55);
+            osc.start(now);
+            osc.stop(now + 0.55);
+            break;
+          case 'boss-warning':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(450, now);
+            osc.frequency.setValueAtTime(220, now + 0.2);
+            gain.gain.setValueAtTime(v * 1.0, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.45);
+            osc.start(now);
+            osc.stop(now + 0.45);
+            break;
+          case 'warp-jump':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(1800, now + 0.6);
+            gain.gain.setValueAtTime(v * 0.8, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.65);
+            osc.start(now);
+            osc.stop(now + 0.65);
+            break;
+          case 'missile-launch':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(380, now);
+            osc.frequency.exponentialRampToValueAtTime(140, now + 0.22);
+            gain.gain.setValueAtTime(v * 0.7, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.25);
+            osc.start(now);
+            osc.stop(now + 0.25);
+            break;
+          case 'coin-jackpot':
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.1);
+            osc.frequency.setValueAtTime(783.99, now + 0.2);
+            osc.frequency.setValueAtTime(1046.50, now + 0.3);
+            gain.gain.setValueAtTime(v * 0.9, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.6);
+            osc.start(now);
+            osc.stop(now + 0.6);
+            break;
+          case 'low-health-alarm':
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.setValueAtTime(400, now + 0.1);
+            gain.gain.setValueAtTime(v * 0.7, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+            break;
+          case 'copilot-radio':
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(900, now);
+            osc.frequency.setValueAtTime(1100, now + 0.08);
+            gain.gain.setValueAtTime(v * 0.6, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.25);
+            osc.start(now);
+            osc.stop(now + 0.25);
+            break;
+          case 'victory':
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.15);
+            osc.frequency.setValueAtTime(783.99, now + 0.3);
+            osc.frequency.setValueAtTime(1046.50, now + 0.45);
+            gain.gain.setValueAtTime(v * 0.8, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.9);
+            osc.start(now);
+            osc.stop(now + 0.9);
+            break;
+          case 'defeat':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(320, now);
+            osc.frequency.linearRampToValueAtTime(70, now + 0.6);
+            gain.gain.setValueAtTime(v * 0.8, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.7);
+            osc.start(now);
+            osc.stop(now + 0.7);
+            break;
+          default:
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            gain.gain.setValueAtTime(v * 0.4, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+            break;
+        }
+      }
+    }
+
+    const audioMgr = new AudioManager();
+
+    // CATÁLOGO EXPANDIDO DE NAVES ESTELARES (7 MODELOS EXCLUSIVOS)
+    const GAME_SHIPS = [
+      {
+        id: 'aurora',
+        name: 'AURORA MK-I',
+        role: 'Interceptador Balanceado',
+        color: '#06b6d4',
+        accentColor: '#38bdf8',
+        priceCoins: 0,
+        priceGems: 0,
+        level: 1,
+        maxLevel: 5,
+        speed: 7.2,
+        maxHp: 100,
+        maxShield: 60,
+        fireRate: 0.13,
+        bulletDmg: 25,
+        specialDuration: 6.0,
+        unlocked: true,
+        desc: 'Nave padrão da Frota de Defesa. Ótima manobrabilidade com canhões gêmeos de plasma.'
+      },
+      {
+        id: 'valkyrie',
+        name: 'VALKYRIE STRIKER',
+        role: 'Alta Cadência de Tiro',
+        color: '#f59e0b',
+        accentColor: '#fbbf24',
+        priceCoins: 3500,
+        priceGems: 25,
+        level: 1,
+        maxLevel: 5,
+        speed: 8.5,
+        maxHp: 90,
+        maxShield: 50,
+        fireRate: 0.08,
+        bulletDmg: 20,
+        specialDuration: 7.0,
+        unlocked: false,
+        desc: 'Construída para bombardeios velozes. Dispara projéteis perfurantes de alta frequência.'
+      },
+      {
+        id: 'titan',
+        name: 'TITAN COLOSSUS',
+        role: 'Blindagem Pesada',
+        color: '#ef4444',
+        accentColor: '#f87171',
+        priceCoins: 7500,
+        priceGems: 50,
+        level: 1,
+        maxLevel: 5,
+        speed: 5.6,
+        maxHp: 180,
+        maxShield: 120,
+        fireRate: 0.20,
+        bulletDmg: 55,
+        specialDuration: 8.5,
+        unlocked: false,
+        desc: 'Fortaleza voadora. Canhões pesados de antimatéria e barreira de contenção reforçada.'
+      },
+      {
+        id: 'phantom',
+        name: 'PHANTOM SPECTER',
+        role: 'Assalto Crítico & Furtivo',
+        color: '#a855f7',
+        accentColor: '#c084fc',
+        priceCoins: 12000,
+        priceGems: 80,
+        level: 1,
+        maxLevel: 5,
+        speed: 8.8,
+        maxHp: 85,
+        maxShield: 70,
+        fireRate: 0.11,
+        bulletDmg: 38,
+        specialDuration: 7.5,
+        unlocked: false,
+        desc: 'Chassi angular com camuflagem quântica. Seus lasers possuem taxa de acerto crítico de 40%.'
+      },
+      {
+        id: 'solaris',
+        name: 'SOLARIS NOVA',
+        role: 'Plasma Incandescente',
+        color: '#eab308',
+        accentColor: '#fde047',
+        priceCoins: 18000,
+        priceGems: 120,
+        level: 1,
+        maxLevel: 5,
+        speed: 7.8,
+        maxHp: 120,
+        maxShield: 90,
+        fireRate: 0.12,
+        bulletDmg: 44,
+        specialDuration: 8.0,
+        unlocked: false,
+        desc: 'Reator alimentado por núcleos solares. Seus tiros causam dano de queimadura residual contínua.'
+      },
+      {
+        id: 'nebula',
+        name: 'NEBULA CRUISER',
+        role: 'Dispersão de Feixes',
+        color: '#14b8a6',
+        accentColor: '#2dd4bf',
+        priceCoins: 25000,
+        priceGems: 160,
+        level: 1,
+        maxLevel: 5,
+        speed: 7.0,
+        maxHp: 140,
+        maxShield: 110,
+        fireRate: 0.14,
+        bulletDmg: 32,
+        specialDuration: 9.0,
+        unlocked: false,
+        desc: 'Canhão triplo de dispersão eletromagnética. Ótima para limpar hordas massivas de caças.'
+      },
+      {
+        id: 'hyperion',
+        name: 'HYPERION DREADNOUGHT',
+        role: 'Nave Capitânia Ômega',
+        color: '#3b82f6',
+        accentColor: '#60a5fa',
+        priceCoins: 40000,
+        priceGems: 250,
+        level: 1,
+        maxLevel: 5,
+        speed: 6.2,
+        maxHp: 220,
+        maxShield: 160,
+        fireRate: 0.15,
+        bulletDmg: 70,
+        specialDuration: 10.0,
+        unlocked: false,
+        desc: 'O pináculo da engenharia da Federação. Dispara salvas quádruplas de torpedos de matéria escura.'
+      }
+    ];
+
+    // ESTADO PERSISTENTE DO PILOTO
+    const PlayerData = {
+      coins: 2000,
+      gems: 30,
+      highScore: 0,
+      pilotName: 'COMANDANTE ORION',
+      pilotLevel: 1,
+      pilotXp: 180,
+      xpForNextLevel: 500,
+      statKills: 0,
+      statBosses: 0,
+      statMissions: 0,
+      statTotalCoins: 2000,
+      selectedShipId: 'aurora',
+      ships: GAME_SHIPS,
+      bombsOwned: 2,
+      upgrades: {
+        magnetLevel: 1,
+        shieldRegenLevel: 1,
+        criticalChanceLevel: 1,
+        bombRadiusLevel: 1
+      },
+      settings: {
+        musicVol: 0.8,
+        sfxVol: 0.9,
+        screenShake: true,
+        autoFire: true,
+        controlMode: 'joystick', // 'joystick' ou 'direct'
+        sensitivity: 12,
+        damageNumbers: true,
+        showFps: false,
+        particlesQuality: 'high'
+      }
+    };
+
+    try {
+      const saved = localStorage.getItem('SPACESHIPS_3_SAVE_V2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        Object.assign(PlayerData, parsed);
+      }
+    } catch (e) {}
+
+    function savePlayerData() {
+      try {
+        localStorage.setItem('SPACESHIPS_3_SAVE_V2', JSON.stringify(PlayerData));
+      } catch (e) {}
+      updateUiDisplays();
+    }
+
+    // CANVAS & RENDER ENGINE SETUP
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let screenW = window.innerWidth;
+    let screenH = window.innerHeight;
+    let pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+
+    function resizeCanvas() {
+      screenW = window.innerWidth;
+      screenH = window.innerHeight;
+      canvas.width = screenW * pixelRatio;
+      canvas.height = screenH * pixelRatio;
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // FUNDO DE ESTRELAS PROCEDURAL
+    class Starfield {
+      constructor() {
+        this.layers = [
+          { count: 65, speed: 0.5, stars: [], size: 1.0, color: 'rgba(255,255,255,0.4)' },
+          { count: 45, speed: 1.4, stars: [], size: 1.6, color: 'rgba(56, 189, 248, 0.7)' },
+          { count: 20, speed: 3.2, stars: [], size: 2.4, color: 'rgba(168, 85, 247, 0.9)' }
+        ];
+        this.init();
+      }
+
+      init() {
+        this.layers.forEach(l => {
+          l.stars = [];
+          for (let i = 0; i < l.count; i++) {
+            l.stars.push({ x: Math.random() * screenW, y: Math.random() * screenH });
+          }
+        });
+      }
+
+      update(multiplier = 1) {
+        this.layers.forEach(l => {
+          l.stars.forEach(s => {
+            s.y += l.speed * multiplier;
+            if (s.y > screenH) {
+              s.y = 0;
+              s.x = Math.random() * screenW;
+            }
+          });
+        });
+      }
+
+      draw(ctx) {
+        this.layers.forEach(l => {
+          ctx.fillStyle = l.color;
+          l.stars.forEach(s => {
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, l.size, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        });
+      }
+    }
+    const starfield = new Starfield();
+
+    // SISTEMA DE PARTÍCULAS E NÚMEROS DE DANO
+    class ParticleEngine {
+      constructor() {
+        this.particles = [];
+        this.damageTexts = [];
+      }
+
+      emit(x, y, color, count = 10, speedMax = 3, sizeMax = 3, life = 30) {
+        if (PlayerData.settings.particlesQuality === 'low') count = Math.ceil(count * 0.4);
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const spd = Math.random() * speedMax;
+          this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * spd,
+            vy: Math.sin(angle) * spd,
+            size: Math.random() * sizeMax + 1,
+            color,
+            alpha: 1,
+            maxLife: life,
+            life: life
+          });
+        }
+      }
+
+      emitDamageText(x, y, text, color = '#fef08a') {
+        if (!PlayerData.settings.damageNumbers) return;
+        this.damageTexts.push({
+          x: x + (Math.random() - 0.5) * 16,
+          y: y,
+          text: String(text),
+          color,
+          alpha: 1,
+          vy: -1.4,
+          life: 25
+        });
+      }
+
+      update() {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life--;
+          p.alpha = p.life / p.maxLife;
+          if (p.life <= 0) this.particles.splice(i, 1);
+        }
+
+        for (let i = this.damageTexts.length - 1; i >= 0; i--) {
+          const d = this.damageTexts[i];
+          d.y += d.vy;
+          d.life--;
+          d.alpha = d.life / 25;
+          if (d.life <= 0) this.damageTexts.splice(i, 1);
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+        this.particles.forEach(p => {
+          ctx.globalAlpha = Math.max(0, p.alpha);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Desenhar números de dano flutuantes
+        ctx.font = 'bold 12px Rajdhani, monospace';
+        ctx.textAlign = 'center';
+        this.damageTexts.forEach(d => {
+          ctx.globalAlpha = Math.max(0, d.alpha);
+          ctx.fillStyle = d.color;
+          ctx.fillText(d.text, d.x, d.y);
+        });
+        ctx.restore();
+      }
+    }
+    const particleEngine = new ParticleEngine();
+
+    let screenShakeAmount = 0;
+    function addScreenShake(amount = 10) {
+      if (!PlayerData.settings.screenShake) return;
+      screenShakeAmount = Math.min(screenShakeAmount + amount, 24);
+    }
+
+    // DESENHO VETORIAL DAS NAVES (USADO NO JOGO E NO PREVIEW DA LOJA/HANGAR)
+    function drawShipModel(c, shipId, x, y, scale = 1, angle = 0, isDamagedBlink = false) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(angle);
+      c.scale(scale, scale);
+
+      if (isDamagedBlink) {
+        c.globalAlpha = 0.45;
+      }
+
+      const ship = GAME_SHIPS.find(s => s.id === shipId) || GAME_SHIPS[0];
+      c.fillStyle = ship.color;
+      c.strokeStyle = ship.accentColor;
+      c.lineWidth = 2;
+
+      if (shipId === 'valkyrie') {
+        // Asas duplas pontiagudas
+        c.beginPath();
+        c.moveTo(0, -28);
+        c.lineTo(14, -8);
+        c.lineTo(26, 20);
+        c.lineTo(10, 16);
+        c.lineTo(0, 24);
+        c.lineTo(-10, 16);
+        c.lineTo(-26, 20);
+        c.lineTo(-14, -8);
+        c.closePath();
+        c.fill();
+        c.stroke();
+      } else if (shipId === 'titan') {
+        // Blindagem pesada hexagonal
+        c.beginPath();
+        c.moveTo(0, -26);
+        c.lineTo(24, -10);
+        c.lineTo(28, 22);
+        c.lineTo(12, 26);
+        c.lineTo(0, 20);
+        c.lineTo(-12, 26);
+        c.lineTo(-28, 22);
+        c.lineTo(-24, -10);
+        c.closePath();
+        c.fill();
+        c.stroke();
+      } else if (shipId === 'phantom') {
+        // Nave furtiva angular com asas em delta invertido
+        c.beginPath();
+        c.moveTo(0, -32);
+        c.lineTo(26, 12);
+        c.lineTo(8, 6);
+        c.lineTo(0, 26);
+        c.lineTo(-8, 6);
+        c.lineTo(-26, 12);
+        c.closePath();
+        c.fill();
+        c.stroke();
+      } else if (shipId === 'solaris') {
+        // Casco radiante com propulsores solares circulares
+        c.beginPath();
+        c.arc(0, 0, 18, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+        c.beginPath();
+        c.moveTo(0, -30);
+        c.lineTo(18, 14);
+        c.lineTo(0, 18);
+        c.lineTo(-18, 14);
+        c.closePath();
+        c.fill();
+      } else if (shipId === 'nebula') {
+        // Tridente moderno
+        c.beginPath();
+        c.moveTo(0, -32);
+        c.lineTo(8, -12);
+        c.lineTo(24, 22);
+        c.lineTo(0, 14);
+        c.lineTo(-24, 22);
+        c.lineTo(-8, -12);
+        c.closePath();
+        c.fill();
+        c.stroke();
+      } else if (shipId === 'hyperion') {
+        // Nave Capitânia com asas massivas
+        c.beginPath();
+        c.moveTo(0, -34);
+        c.lineTo(20, -14);
+        c.lineTo(32, 16);
+        c.lineTo(16, 24);
+        c.lineTo(0, 18);
+        c.lineTo(-16, 24);
+        c.lineTo(-32, 16);
+        c.lineTo(-20, -14);
+        c.closePath();
+        c.fill();
+        c.stroke();
+      } else {
+        // Aurora MK-I Padrão
+        c.beginPath();
+        c.moveTo(0, -28);
+        c.lineTo(24, 18);
+        c.lineTo(12, 14);
+        c.lineTo(0, 22);
+        c.lineTo(-12, 14);
+        c.lineTo(-24, 18);
+        c.closePath();
+        c.fill();
+        c.stroke();
+      }
+
+      // Cockpit de cristal estelar
+      c.fillStyle = '#ffffff';
+      c.beginPath();
+      c.ellipse(0, -6, 5, 11, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // Chama dos propulsores
+      c.fillStyle = '#38bdf8';
+      c.beginPath();
+      c.moveTo(-6, 20);
+      c.lineTo(0, 32 + Math.random() * 8);
+      c.lineTo(6, 20);
+      c.closePath();
+      c.fill();
+
+      c.restore();
+    }
+
+    class Projectile {
+      constructor(x, y, vx, vy, damage, isPlayer = true, color = '#38bdf8', size = 4) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.damage = damage;
+        this.isPlayer = isPlayer;
+        this.color = color;
+        this.size = size;
+        this.alive = true;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.y < -50 || this.y > screenH + 50 || this.x < -50 || this.x > screenW + 50) {
+          this.alive = false;
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        if (this.isPlayer) {
+          ctx.rect(this.x - 2, this.y - 11, 4, 16);
+        } else {
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // SISTEMA EXPANDIDO DE DROPS E POWERUPS
+    class DropItem {
+      constructor(x, y, type) {
+        this.x = x;
+        this.y = y;
+        this.type = type; // 'coin', 'gem', 'heal', 'shield', 'powerup', 'bomb', 'haste'
+        this.vy = 2.0;
+        this.vx = (Math.random() - 0.5) * 1.5;
+        this.alive = true;
+        this.size = 12;
+      }
+
+      update(player) {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        const magnetRange = 160 + (PlayerData.upgrades.magnetLevel * 45) + (player.magnetBoostTimer > 0 ? 300 : 0);
+
+        if (dist < magnetRange) {
+          const pull = 6 / (dist + 1);
+          this.vx += (dx / dist) * pull * 4.5;
+          this.vy += (dy / dist) * pull * 4.5;
+        }
+
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.y > screenH + 40) this.alive = false;
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        if (this.type === 'coin') {
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(0, 0, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#fef3c7';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        } else if (this.type === 'gem') {
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.moveTo(0, -9);
+          ctx.lineTo(8, 0);
+          ctx.lineTo(0, 9);
+          ctx.lineTo(-8, 0);
+          ctx.closePath();
+          ctx.fill();
+        } else if (this.type === 'heal') {
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(-8, -8, 16, 16);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-2, -6, 4, 12);
+          ctx.fillRect(-6, -2, 12, 4);
+        } else if (this.type === 'shield') {
+          ctx.fillStyle = '#06b6d4';
+          ctx.beginPath();
+          ctx.arc(0, 0, 9, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#e0f2fe';
+          ctx.stroke();
+        } else if (this.type === 'bomb') {
+          ctx.fillStyle = '#f97316';
+          ctx.beginPath();
+          ctx.arc(0, 0, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-2, -4, 4, 8);
+        } else if (this.type === 'haste') {
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.moveTo(0, -8);
+          ctx.lineTo(7, 8);
+          ctx.lineTo(-7, 8);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          // Power-up de Canhão OP
+          ctx.fillStyle = '#a855f7';
+          ctx.beginPath();
+          ctx.arc(0, 0, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fdf4ff';
+          ctx.fillRect(-3, -3, 6, 6);
+        }
+        ctx.restore();
+      }
+    }
+
+    class Enemy {
+      constructor(x, y, type = 'scout') {
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        this.alive = true;
+        this.shootTimer = Math.random() * 2;
+
+        if (type === 'scout') {
+          this.maxHp = 45;
+          this.hp = 45;
+          this.speedY = 2.6;
+          this.speedX = Math.sin(x) * 1.5;
+          this.color = '#ef4444';
+          this.scoreVal = 100;
+          this.size = 18;
+        } else if (type === 'interceptor') {
+          this.maxHp = 95;
+          this.hp = 95;
+          this.speedY = 1.9;
+          this.speedX = 2.2;
+          this.color = '#f97316';
+          this.scoreVal = 250;
+          this.size = 24;
+        } else if (type === 'boss') {
+          this.maxHp = 2200;
+          this.hp = 2200;
+          this.speedY = 0.55;
+          this.speedX = 1.9;
+          this.color = '#e11d48';
+          this.scoreVal = 4000;
+          this.size = 68;
+          this.targetY = 120;
+        }
+      }
+
+      update(projectiles) {
+        if (this.type === 'boss') {
+          if (this.y < this.targetY) {
+            this.y += this.speedY;
+          } else {
+            this.x += this.speedX;
+            if (this.x < 100 || this.x > screenW - 100) {
+              this.speedX *= -1;
+            }
+          }
+
+          this.shootTimer += 0.016;
+          if (this.shootTimer > 0.85) {
+            this.shootTimer = 0;
+            projectiles.push(new Projectile(this.x - 32, this.y + 30, -1.2, 5, 20, false, '#f43f5e', 5));
+            projectiles.push(new Projectile(this.x + 32, this.y + 30, 1.2, 5, 20, false, '#f43f5e', 5));
+            projectiles.push(new Projectile(this.x, this.y + 40, 0, 6, 25, false, '#fbbf24', 6));
+          }
+          return;
+        }
+
+        this.y += this.speedY;
+        this.x += Math.sin(this.y * 0.05) * (this.type === 'interceptor' ? 2.5 : 1.2);
+
+        this.shootTimer += 0.016;
+        if (this.shootTimer > (this.type === 'interceptor' ? 1.7 : 2.6)) {
+          this.shootTimer = 0;
+          projectiles.push(new Projectile(this.x, this.y + 15, 0, 4.5, 15, false, '#f87171', 4));
+        }
+
+        if (this.y > screenH + 60) {
+          this.alive = false;
+        }
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        if (this.type === 'boss') {
+          ctx.fillStyle = '#1e1b4b';
+          ctx.strokeStyle = '#e11d48';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0, 50);
+          ctx.lineTo(60, 20);
+          ctx.lineTo(70, -40);
+          ctx.lineTo(30, -25);
+          ctx.lineTo(0, -50);
+          ctx.lineTo(-30, -25);
+          ctx.lineTo(-70, -40);
+          ctx.lineTo(-60, 20);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Núcleo pulsante do Chefe
+          ctx.fillStyle = '#f43f5e';
+          ctx.shadowColor = '#f43f5e';
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.arc(0, 0, 20, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.moveTo(0, this.size);
+          ctx.lineTo(this.size * 0.9, -this.size * 0.7);
+          ctx.lineTo(0, -this.size * 0.3);
+          ctx.lineTo(-this.size * 0.9, -this.size * 0.7);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    // NAVE DO JOGADOR COM I-FRAMES E REGENERAÇÃO CORRIGIDA
+    class PlayerShip {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        const shipData = PlayerData.ships.find(s => s.id === PlayerData.selectedShipId) || PlayerData.ships[0];
+        this.data = shipData;
+        this.x = screenW / 2;
+        this.y = screenH - 130;
+        this.targetX = this.x;
+        this.targetY = this.y;
+        this.vx = 0;
+        this.vy = 0;
+        this.hp = shipData.maxHp;
+        this.shield = shipData.maxShield;
+        this.weaponLevel = 1;
+        this.shootTimer = 0;
+        this.manualShooting = false;
+        this.overdriveActive = false;
+        this.overdriveTimeLeft = 0;
+        this.specialCooldown = 0;
+        this.maxSpecialCooldown = 18;
+        this.invulnerableTimer = 0; // I-Frames anti morte súbita
+        this.damageCooldownTimer = 0; // Pausa da regen de escudo
+        this.magnetBoostTimer = 0;
+        this.hasteTimer = 0;
+        this.alarmTimer = 0;
+      }
+
+      update(projectiles) {
+        // Reduz temporizadores de buffs e imunidade
+        if (this.invulnerableTimer > 0) this.invulnerableTimer -= 0.016;
+        if (this.damageCooldownTimer > 0) this.damageCooldownTimer -= 0.016;
+        if (this.magnetBoostTimer > 0) this.magnetBoostTimer -= 0.016;
+        if (this.hasteTimer > 0) this.hasteTimer -= 0.016;
+
+        // Alarme de vida crítica (< 25%)
+        if (this.hp < this.data.maxHp * 0.25) {
+          this.alarmTimer += 0.016;
+          if (this.alarmTimer > 2.0) {
+            this.alarmTimer = 0;
+            audioMgr.playSfx('low-health-alarm');
+          }
+        }
+
+        // Movimento (Interpolado para toque direto ou Joystick)
+        if (PlayerData.settings.controlMode === 'joystick') {
+          const moveSpeed = this.data.speed * (this.hasteTimer > 0 ? 1.4 : 1.0) * (PlayerData.settings.sensitivity / 10);
+          this.x += this.vx * moveSpeed;
+          this.y += this.vy * moveSpeed;
+        } else {
+          this.x += (this.targetX - this.x) * 0.20;
+          this.y += (this.targetY - this.y) * 0.20;
+        }
+
+        // Limites na tela
+        this.x = Math.max(30, Math.min(screenW - 30, this.x));
+        this.y = Math.max(50, Math.min(screenH - 50, this.y));
+
+        // Partículas da turbina
+        particleEngine.emit(this.x + (Math.random() - 0.5) * 8, this.y + 24, this.data.color, 2, 1.5, 3, 12);
+
+        // Regeneração Segura de Escudo (apenas se não tomou dano nos últimos 2.5s)
+        if (this.damageCooldownTimer <= 0 && this.shield < this.data.maxShield) {
+          this.shield = Math.min(this.data.maxShield, this.shield + 0.04 * PlayerData.upgrades.shieldRegenLevel);
+        }
+
+        // Habilidade Especial / Sobrecarga
+        if (this.overdriveActive) {
+          this.overdriveTimeLeft -= 0.016;
+          if (this.overdriveTimeLeft <= 0) {
+            this.overdriveActive = false;
+          }
+        }
+        if (this.specialCooldown > 0) {
+          this.specialCooldown -= 0.016;
+        }
+
+        // Cadência de Disparo (Auto-fire ou Manual pressionado)
+        this.shootTimer += 0.016;
+        const currentFireRate = (this.overdriveActive ? this.data.fireRate * 0.5 : this.data.fireRate) * (this.hasteTimer > 0 ? 0.7 : 1.0);
+        
+        const wantsToShoot = PlayerData.settings.autoFire || this.manualShooting;
+        if (wantsToShoot && this.shootTimer >= currentFireRate) {
+          this.shoot(projectiles);
+          this.shootTimer = 0;
+        }
+      }
+
+      shoot(projectiles) {
+        audioMgr.playSfx('click2');
+        let dmg = this.overdriveActive ? this.data.bulletDmg * 1.8 : this.data.bulletDmg;
+
+        // Chance Crítica
+        const isCrit = Math.random() < (0.10 + PlayerData.upgrades.criticalChanceLevel * 0.05 + (this.data.id === 'phantom' ? 0.25 : 0));
+        if (isCrit) {
+          dmg *= 2.0;
+        }
+
+        if (this.weaponLevel === 1) {
+          projectiles.push(new Projectile(this.x - 10, this.y - 20, 0, -12, dmg, true, this.data.color));
+          projectiles.push(new Projectile(this.x + 10, this.y - 20, 0, -12, dmg, true, this.data.color));
+        } else if (this.weaponLevel === 2) {
+          projectiles.push(new Projectile(this.x, this.y - 24, 0, -13, dmg, true, this.data.accentColor, 5));
+          projectiles.push(new Projectile(this.x - 15, this.y - 15, -1.8, -12, dmg * 0.85, true, this.data.color));
+          projectiles.push(new Projectile(this.x + 15, this.y - 15, 1.8, -12, dmg * 0.85, true, this.data.color));
+        } else {
+          projectiles.push(new Projectile(this.x - 8, this.y - 24, 0, -14, dmg, true, '#ffffff', 5));
+          projectiles.push(new Projectile(this.x + 8, this.y - 24, 0, -14, dmg, true, '#ffffff', 5));
+          projectiles.push(new Projectile(this.x - 22, this.y - 12, -2.8, -13, dmg * 0.8, true, this.data.color));
+          projectiles.push(new Projectile(this.x + 22, this.y - 12, 2.8, -13, dmg * 0.8, true, this.data.color));
+        }
+      }
+
+      // RECEBIMENTO DE DANO COM I-FRAMES E REGRAS ROBUSTAS
+      takeDamage(amount) {
+        if (this.invulnerableTimer > 0) return false;
+
+        this.damageCooldownTimer = 2.5; // Reseta pausa da regeneração
+        addScreenShake(8);
+
+        let remainingDamage = amount;
+
+        // Escudo absorve primeiro
+        if (this.shield > 0) {
+          if (this.shield >= remainingDamage) {
+            this.shield -= remainingDamage;
+            remainingDamage = 0;
+            audioMgr.playSfx('shield');
+          } else {
+            remainingDamage -= this.shield;
+            this.shield = 0;
+            audioMgr.playSfx('shield-break');
+            particleEngine.emit(this.x, this.y, '#06b6d4', 20, 4, 3, 20);
+          }
+        }
+
+        // Dano excedente vai para o casco
+        if (remainingDamage > 0) {
+          this.hp = Math.max(0, this.hp - remainingDamage);
+          audioMgr.playSfx('explosion');
+          particleEngine.emitDamageText(this.x, this.y - 20, `-${Math.round(remainingDamage)}`, '#f43f5e');
+        }
+
+        // Concede 0.9 segundo de invulnerabilidade
+        this.invulnerableTimer = 0.9;
+
+        if (this.hp <= 0) {
+          this.hp = 0;
+          return true; // Nave destruída
+        }
+        return false;
+      }
+
+      activateSpecial() {
+        if (this.specialCooldown <= 0) {
+          this.overdriveActive = true;
+          this.overdriveTimeLeft = this.data.specialDuration;
+          this.specialCooldown = this.maxSpecialCooldown;
+          audioMgr.playSfx('laser-overdrive');
+          particleEngine.emit(this.x, this.y, '#c084fc', 35, 6, 5, 45);
+        }
+      }
+
+      draw(ctx) {
+        // Efeito de escudo esférico
+        if (this.shield > 0) {
+          ctx.save();
+          ctx.strokeStyle = `rgba(6, 182, 212, ${Math.min(0.9, (this.shield / this.data.maxShield) + 0.2)})`;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 36, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Piscar se estiver em I-Frames
+        const isBlinking = this.invulnerableTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0;
+        drawShipModel(ctx, this.data.id, this.x, this.y, 1.0, 0, isBlinking);
+      }
+    }
+
+    // GAME MANAGER MASTER
+    class GameManager {
+      constructor() {
+        this.state = 'INTRO';
+        this.player = new PlayerShip();
+        this.projectiles = [];
+        this.enemies = [];
+        this.drops = [];
+        this.score = 0;
+        this.sectorCoins = 0;
+        this.sectorGems = 0;
+        this.sectorKills = 0;
+        this.sectorProgress = 0;
+        this.bossActive = false;
+        this.currentBoss = null;
+        this.enemySpawnTimer = 0;
+        this.timingNeedlePos = 0;
+        this.timingNeedleSpeed = 1.8;
+        this.timingLocked = false;
+        this.multiplier = 1.0;
+        this.fps = 60;
+        this.lastFpsCheck = performance.now();
+        this.frameCount = 0;
+      }
+
+      startMission() {
+        this.player.reset();
+        this.projectiles = [];
+        this.enemies = [];
+        this.drops = [];
+        this.score = 0;
+        this.sectorCoins = 0;
+        this.sectorGems = 0;
+        this.sectorKills = 0;
+        this.sectorProgress = 0;
+        this.bossActive = false;
+        this.currentBoss = null;
+        this.timingLocked = false;
+        this.multiplier = 1.0;
+
+        this.state = 'PLAYING';
+        document.getElementById('mainMenuScreen').classList.add('hidden');
+        document.getElementById('endGameModal').classList.add('hidden');
+        document.getElementById('pauseModal').classList.add('hidden');
+        document.getElementById('gameHud').classList.remove('hidden');
+
+        audioMgr.playSfx('warp-jump');
+        audioMgr.playMusic('gameplay-song');
+      }
+
+      triggerEmpBomb() {
+        if (PlayerData.bombsOwned <= 0) {
+          audioMgr.playSfx('error');
+          return;
+        }
+
+        PlayerData.bombsOwned--;
+        document.getElementById('hudBombCount').textContent = PlayerData.bombsOwned;
+        audioMgr.playSfx('explosion');
+        addScreenShake(20);
+
+        // Limpa projéteis inimigos e causa alto dano
+        this.projectiles = this.projectiles.filter(p => p.isPlayer);
+        particleEngine.emit(this.player.x, this.player.y, '#f59e0b', 80, 8, 6, 50);
+
+        this.enemies.forEach(e => {
+          e.hp -= 200;
+          particleEngine.emitDamageText(e.x, e.y, '-200', '#fbbf24');
+        });
+
+        for (let j = this.enemies.length - 1; j >= 0; j--) {
+          if (this.enemies[j].hp <= 0) {
+            this.onEnemyKilled(this.enemies[j]);
+            this.enemies.splice(j, 1);
+          }
+        }
+      }
+
+      spawnEnemies() {
+        this.enemySpawnTimer += 0.016;
+
+        if (!this.bossActive && this.sectorProgress >= 100) {
+          this.bossActive = true;
+          this.currentBoss = new Enemy(screenW / 2, -70, 'boss');
+          this.enemies.push(this.currentBoss);
+          document.getElementById('hudBossContainer').classList.remove('hidden');
+          audioMgr.playSfx('boss-warning');
+          return;
+        }
+
+        if (!this.bossActive && this.enemySpawnTimer > 0.95) {
+          this.enemySpawnTimer = 0;
+          this.sectorProgress += 1.6;
+          const spawnX = Math.random() * (screenW - 100) + 50;
+          const isInterceptor = Math.random() > 0.65;
+          this.enemies.push(new Enemy(spawnX, -40, isInterceptor ? 'interceptor' : 'scout'));
+        }
+      }
+
+      update() {
+        if (this.state !== 'PLAYING') return;
+
+        if (screenShakeAmount > 0) screenShakeAmount *= 0.9;
+
+        starfield.update(1.6);
+        particleEngine.update();
+        this.player.update(this.projectiles);
+        this.spawnEnemies();
+
+        // Atualizar Projéteis
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          const p = this.projectiles[i];
+          p.update();
+          if (!p.alive) {
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+
+          if (p.isPlayer) {
+            for (let j = this.enemies.length - 1; j >= 0; j--) {
+              const e = this.enemies[j];
+              const dist = Math.hypot(p.x - e.x, p.y - e.y);
+              if (dist < e.size + p.size) {
+                p.alive = false;
+                e.hp -= p.damage;
+                particleEngine.emit(p.x, p.y, p.color, 4, 2, 2, 10);
+                particleEngine.emitDamageText(e.x, e.y - 10, Math.round(p.damage));
+
+                if (e.hp <= 0) {
+                  this.onEnemyKilled(e);
+                  this.enemies.splice(j, 1);
+                }
+                break;
+              }
+            }
+          } else {
+            // Tiro inimigo colidindo com jogador
+            const dist = Math.hypot(p.x - this.player.x, p.y - this.player.y);
+            if (dist < 26) {
+              p.alive = false;
+              particleEngine.emit(p.x, p.y, '#f87171', 8, 3, 3, 15);
+              if (this.player.takeDamage(p.damage)) {
+                this.onPlayerDefeat();
+              }
+            }
+          }
+        }
+
+        // Atualizar Inimigos e colisão com nave (Com I-Frames para não matar em 1 frame!)
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+          const e = this.enemies[i];
+          e.update(this.projectiles);
+          if (!e.alive) {
+            this.enemies.splice(i, 1);
+            continue;
+          }
+
+          const dist = Math.hypot(e.x - this.player.x, e.y - this.player.y);
+          if (dist < e.size + 24) {
+            if (this.player.takeDamage(35)) {
+              this.onPlayerDefeat();
+            }
+            if (e.type !== 'boss') {
+              this.enemies.splice(i, 1);
+              particleEngine.emit(e.x, e.y, e.color, 16, 4, 4, 20);
+            }
+          }
+        }
+
+        // Atualizar Drops
+        for (let i = this.drops.length - 1; i >= 0; i--) {
+          const d = this.drops[i];
+          d.update(this.player);
+          if (!d.alive) {
+            this.drops.splice(i, 1);
+            continue;
+          }
+
+          const dist = Math.hypot(d.x - this.player.x, d.y - this.player.y);
+          if (dist < 28) {
+            this.onCollectDrop(d);
+            this.drops.splice(i, 1);
+          }
+        }
+
+        this.updateHud();
+      }
+
+      onEnemyKilled(e) {
+        audioMgr.playSfx('explosion');
+        addScreenShake(e.type === 'boss' ? 18 : 6);
+        particleEngine.emit(e.x, e.y, e.color, e.type === 'boss' ? 65 : 18, 5, 4, 30);
+        this.score += e.scoreVal;
+        this.sectorKills++;
+
+        // Sorteio de Drops Diversificados
+        const r = Math.random();
+        if (r < 0.35) {
+          this.drops.push(new DropItem(e.x, e.y, 'coin'));
+        } else if (r < 0.45) {
+          this.drops.push(new DropItem(e.x, e.y, 'gem'));
+        } else if (r < 0.55 && this.player.hp < this.player.data.maxHp) {
+          this.drops.push(new DropItem(e.x, e.y, 'heal'));
+        } else if (r < 0.65) {
+          this.drops.push(new DropItem(e.x, e.y, 'shield'));
+        } else if (r < 0.73) {
+          this.drops.push(new DropItem(e.x, e.y, 'powerup'));
+        } else if (r < 0.79) {
+          this.drops.push(new DropItem(e.x, e.y, 'bomb'));
+        } else if (r < 0.85) {
+          this.drops.push(new DropItem(e.x, e.y, 'haste'));
+        }
+
+        if (e.type === 'boss') {
+          this.onSectorVictory();
+        }
+      }
+
+      onCollectDrop(d) {
+        if (d.type === 'coin') {
+          audioMgr.playSfx('succes');
+          this.sectorCoins += 30;
+        } else if (d.type === 'gem') {
+          audioMgr.playSfx('succes');
+          this.sectorGems += 2;
+        } else if (d.type === 'heal') {
+          audioMgr.playSfx('heal');
+          this.player.hp = Math.min(this.player.data.maxHp, this.player.hp + 35);
+          particleEngine.emitDamageText(this.player.x, this.player.y - 20, '+35 HP', '#4ade80');
+        } else if (d.type === 'shield') {
+          audioMgr.playSfx('shield');
+          this.player.shield = this.player.data.maxShield;
+          particleEngine.emitDamageText(this.player.x, this.player.y - 20, 'ESCUDO MAX', '#38bdf8');
+        } else if (d.type === 'bomb') {
+          audioMgr.playSfx('succes');
+          PlayerData.bombsOwned++;
+          document.getElementById('hudBombCount').textContent = PlayerData.bombsOwned;
+          particleEngine.emitDamageText(this.player.x, this.player.y - 20, '+1 BOMBA EMP', '#fbbf24');
+        } else if (d.type === 'haste') {
+          audioMgr.playSfx('op-powerup');
+          this.player.hasteTimer = 6.0;
+          particleEngine.emitDamageText(this.player.x, this.player.y - 20, 'TURBO ATIVADO', '#38bdf8');
+        } else {
+          audioMgr.playSfx('op-powerup');
+          this.player.weaponLevel = Math.min(3, this.player.weaponLevel + 1);
+          particleEngine.emitDamageText(this.player.x, this.player.y - 20, `ARMA MK-${this.player.weaponLevel}`, '#c084fc');
+        }
+      }
+
+      updateHud() {
+        document.getElementById('hudScore').textContent = String(this.score).padStart(6, '0');
+        document.getElementById('hudCoins').textContent = this.sectorCoins;
+        document.getElementById('hudGems').textContent = this.sectorGems;
+
+        const hpPct = Math.max(0, (this.player.hp / this.player.data.maxHp) * 100);
+        document.getElementById('hudHpBar').style.width = `${hpPct}%`;
+        document.getElementById('hudHpText').textContent = `${Math.ceil(this.player.hp)}/${this.player.data.maxHp}`;
+
+        const shieldPct = Math.max(0, (this.player.shield / this.player.data.maxShield) * 100);
+        document.getElementById('hudShieldBar').style.width = `${shieldPct}%`;
+        document.getElementById('hudShieldText').textContent = `${Math.ceil(this.player.shield)}/${this.player.data.maxShield}`;
+
+        document.getElementById('hudWeaponLevel').textContent = `ARMA: MK-${this.player.weaponLevel}`;
+
+        const cdOverlay = document.getElementById('specialCooldownOverlay');
+        const cdPct = (this.player.specialCooldown / this.player.maxSpecialCooldown) * 100;
+        cdOverlay.style.height = `${Math.max(0, cdPct)}%`;
+
+        if (this.bossActive && this.currentBoss) {
+          const bossPct = Math.max(0, (this.currentBoss.hp / this.currentBoss.maxHp) * 100);
+          document.getElementById('hudBossHpBar').style.width = `${bossPct}%`;
+          document.getElementById('hudBossHpText').textContent = `${Math.ceil(bossPct)}%`;
+        }
+
+        // Medidor de FPS
+        this.frameCount++;
+        const now = performance.now();
+        if (now - this.lastFpsCheck >= 1000) {
+          this.fps = this.frameCount;
+          this.frameCount = 0;
+          this.lastFpsCheck = now;
+          if (PlayerData.settings.showFps) {
+            const fpsEl = document.getElementById('hudFpsCounter');
+            fpsEl.textContent = `${this.fps} FPS`;
+            fpsEl.classList.remove('hidden');
+          }
+        }
+      }
+
+      onPlayerDefeat() {
+        this.state = 'GAMEOVER';
+        audioMgr.playSfx('defeat');
+        this.showEndModal(false);
+      }
+
+      onSectorVictory() {
+        this.state = 'VICTORY';
+        audioMgr.playSfx('victory');
+        this.showEndModal(true);
+      }
+
+      showEndModal(isVictory) {
+        document.getElementById('gameHud').classList.add('hidden');
+        document.getElementById('endGameModal').classList.remove('hidden');
+
+        const badge = document.getElementById('endGameBadge');
+        const title = document.getElementById('endGameTitle');
+        const sub = document.getElementById('endGameSubtitle');
+
+        if (isVictory) {
+          badge.className = 'w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-white text-2xl font-black shadow-lg bg-emerald-600 glow-cyan';
+          badge.innerHTML = '<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+          title.textContent = 'SETOR LIBERADO!';
+          sub.textContent = 'A FROTA INIMIGA FOI REPELIDA COM SUCESSO';
+          PlayerData.statMissions++;
+          PlayerData.statBosses++;
+        } else {
+          badge.className = 'w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-white text-2xl font-black shadow-lg bg-rose-600 glow-crimson';
+          badge.innerHTML = '<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+          title.textContent = 'NAVE DESTRUÍDA';
+          sub.textContent = 'SISTEMAS DE RESGATE ACIONADOS';
+        }
+
+        PlayerData.statKills += this.sectorKills;
+        const xpEarned = Math.floor(this.score / 15) + (isVictory ? 350 : 90);
+        PlayerData.pilotXp += xpEarned;
+        checkPilotLevelUp();
+
+        if (this.score > PlayerData.highScore) {
+          PlayerData.highScore = this.score;
+        }
+
+        document.getElementById('endScoreVal').textContent = String(this.score).padStart(6, '0');
+        document.getElementById('endCoinsVal').textContent = `+${this.sectorCoins}`;
+        document.getElementById('endXpVal').textContent = `+${xpEarned}`;
+        document.getElementById('endKillsVal').textContent = this.sectorKills;
+
+        this.timingLocked = false;
+        this.timingNeedlePos = 0;
+        document.getElementById('multiplierResultText').textContent = 'x1.0';
+        document.getElementById('btnStopTiming').disabled = false;
+        document.getElementById('btnStopTiming').classList.remove('opacity-50');
+
+        savePlayerData();
+      }
+
+      draw(ctx) {
+        ctx.clearRect(0, 0, screenW, screenH);
+
+        ctx.save();
+        if (screenShakeAmount > 0.5) {
+          const shakeX = (Math.random() - 0.5) * screenShakeAmount;
+          const shakeY = (Math.random() - 0.5) * screenShakeAmount;
+          ctx.translate(shakeX, shakeY);
+        }
+
+        starfield.draw(ctx);
+        particleEngine.draw(ctx);
+
+        if (this.state === 'PLAYING') {
+          this.drops.forEach(d => d.draw(ctx));
+          this.projectiles.forEach(p => p.draw(ctx));
+          this.enemies.forEach(e => e.draw(ctx));
+          this.player.draw(ctx);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    const game = new GameManager();
+
+    function gameLoop() {
+      game.update();
+      game.draw(ctx);
+
+      if (!game.timingLocked && !document.getElementById('endGameModal').classList.contains('hidden')) {
+        game.timingNeedlePos += game.timingNeedleSpeed;
+        if (game.timingNeedlePos >= 100 || game.timingNeedlePos <= 0) {
+          game.timingNeedleSpeed *= -1;
+        }
+        document.getElementById('timingNeedle').style.left = `${Math.max(0, Math.min(100, game.timingNeedlePos))}%`;
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // JOYSTICK VIRTUAL PRECISO & CONTROLE POR TOQUE
+    const joyZone = document.getElementById('touchJoyZone');
+    const joyKnob = document.getElementById('touchJoyKnob');
+    let joyActive = false;
+    let joyTouchId = null;
+    let joyBaseX = 0;
+    let joyBaseY = 0;
+
+    function handleJoyStart(e) {
+      if (game.state !== 'PLAYING') return;
+      const touch = e.changedTouches[0];
+      joyTouchId = touch.identifier;
+      joyActive = true;
+      const rect = joyZone.getBoundingClientRect();
+      joyBaseX = rect.left + rect.width / 2;
+      joyBaseY = rect.top + rect.height / 2;
+      handleJoyMove(e);
+    }
+
+    function handleJoyMove(e) {
+      if (!joyActive || game.state !== 'PLAYING') return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === joyTouchId) {
+          const dx = touch.clientX - joyBaseX;
+          const dy = touch.clientY - joyBaseY;
+          const maxRadius = 45;
+          const dist = Math.hypot(dx, dy);
+          const angle = Math.atan2(dy, dx);
+
+          const clampedDist = Math.min(dist, maxRadius);
+          const knobX = Math.cos(angle) * clampedDist;
+          const knobY = Math.sin(angle) * clampedDist;
+
+          joyKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+          // Normaliza vetor [-1 a 1] para mover a nave
+          game.player.vx = knobX / maxRadius;
+          game.player.vy = knobY / maxRadius;
+          break;
+        }
+      }
+    }
+
+    function handleJoyEnd(e) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          joyActive = false;
+          joyTouchId = null;
+          joyKnob.style.transform = `translate(0px, 0px)`;
+          game.player.vx = 0;
+          game.player.vy = 0;
+          break;
+        }
+      }
+    }
+
+    joyZone.addEventListener('touchstart', handleJoyStart, { passive: false });
+    window.addEventListener('touchmove', handleJoyMove, { passive: false });
+    window.addEventListener('touchend', handleJoyEnd);
+    window.addEventListener('touchcancel', handleJoyEnd);
+
+    // MOUSE & CONTROLE DIRETO (PC & TELAS TOUCH FORA DO JOYSTICK)
+    window.addEventListener('mousemove', (e) => {
+      if (game.state === 'PLAYING') {
+        game.player.targetX = e.clientX;
+        game.player.targetY = e.clientY;
+      }
+    });
+
+    window.addEventListener('mousedown', (e) => {
+      if (game.state === 'PLAYING' && e.button === 0) {
+        game.player.manualShooting = true;
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (game.state === 'PLAYING') {
+        game.player.manualShooting = false;
+      }
+    });
+
+    // TECLADO PC (WASD, ESPAÇO, E, P, Z)
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (game.state === 'PLAYING') {
+        if (e.code === 'Space') game.player.activateSpecial();
+        if (e.code === 'KeyE') game.triggerEmpBomb();
+        if (e.code === 'KeyZ' || e.code === 'KeyJ') game.player.manualShooting = true;
+        if (e.code === 'KeyP' || e.code === 'Escape') pauseGame();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+      if (e.code === 'KeyZ' || e.code === 'KeyJ') {
+        game.player.manualShooting = false;
+      }
+    });
+
+    // Movimentação Contínua pelo Teclado WASD / Setas
+    function processKeyboardMovement() {
+      if (game.state === 'PLAYING') {
+        let kx = 0;
+        let ky = 0;
+        if (keys['KeyW'] || keys['ArrowUp']) ky -= 1;
+        if (keys['KeyS'] || keys['ArrowDown']) ky += 1;
+        if (keys['KeyA'] || keys['ArrowLeft']) kx -= 1;
+        if (keys['KeyD'] || keys['ArrowRight']) kx += 1;
+
+        if (kx !== 0 || ky !== 0) {
+          const len = Math.hypot(kx, ky);
+          game.player.targetX += (kx / len) * game.player.data.speed * 1.5;
+          game.player.targetY += (ky / len) * game.player.data.speed * 1.5;
+        }
+      }
+      requestAnimationFrame(processKeyboardMovement);
+    }
+    processKeyboardMovement();
+
+    // BOTÃO DE DISPARO MANUAL (TOUCH E MOBILE)
+    const btnManualShoot = document.getElementById('btnManualShoot');
+    btnManualShoot.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      game.player.manualShooting = true;
+      game.player.shoot(game.projectiles);
+    });
+    btnManualShoot.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      game.player.manualShooting = false;
+    });
+    btnManualShoot.addEventListener('mousedown', () => {
+      game.player.manualShooting = true;
+      game.player.shoot(game.projectiles);
+    });
+    btnManualShoot.addEventListener('mouseup', () => {
+      game.player.manualShooting = false;
+    });
+
+    // Botões de Habilidades do HUD
+    document.getElementById('btnSpecialSkill').addEventListener('click', () => {
+      if (game.state === 'PLAYING') game.player.activateSpecial();
+    });
+
+    document.getElementById('btnBombSkill').addEventListener('click', () => {
+      if (game.state === 'PLAYING') game.triggerEmpBomb();
+    });
+
+    // PARAR O CALIBRADOR DE MULTIPLICADOR (TIMING MINIGAME)
+    document.getElementById('btnStopTiming').addEventListener('click', () => {
+      if (game.timingLocked) return;
+      game.timingLocked = true;
+      audioMgr.playSfx('click');
+
+      const needle = game.timingNeedlePos;
+      let mult = 1.0;
+      let label = 'x1.0';
+
+      // Zonas: Verde central (47 a 53) = x3.5, Amarelo = x2.0, Laranja = x1.5, Vermelho = x1.2
+      if (needle >= 47 && needle <= 53) {
+        mult = 3.5;
+        label = 'x3.5 JACKPOT PERFEITO!';
+        audioMgr.playSfx('coin-jackpot');
+      } else if ((needle >= 40 && needle < 47) || (needle > 53 && needle <= 60)) {
+        mult = 2.0;
+        label = 'x2.0 EXCELENTE!';
+        audioMgr.playSfx('succes');
+      } else if ((needle >= 25 && needle < 40) || (needle > 60 && needle <= 75)) {
+        mult = 1.5;
+        label = 'x1.5 BOM!';
+        audioMgr.playSfx('click2');
+      } else {
+        mult = 1.2;
+        label = 'x1.2 BÁSICO';
+        audioMgr.playSfx('click');
+      }
+
+      game.multiplier = mult;
+      document.getElementById('multiplierResultText').textContent = label;
+
+      const bonusCoins = Math.round(game.sectorCoins * (mult - 1));
+      PlayerData.coins += game.sectorCoins + bonusCoins;
+      PlayerData.gems += game.sectorGems;
+      PlayerData.statTotalCoins += game.sectorCoins + bonusCoins;
+
+      document.getElementById('endCoinsVal').textContent = `+${Math.round(game.sectorCoins * mult)} (${label})`;
+      savePlayerData();
+
+      const btn = document.getElementById('btnStopTiming');
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+    });
+
+    // SIMULAÇÃO DO BOTÃO DE PATROCÍNIO (TESTE SEM TRAVAMENTO)
+    document.getElementById('btnTestAdReward').addEventListener('click', () => {
+      PlayerData.coins += 500;
+      PlayerData.gems += 2;
+      PlayerData.statTotalCoins += 500;
+      audioMgr.playSfx('succes');
+      savePlayerData();
+      alert('Transmissão recebida: +500 Moedas e +2 Gemas adicionadas ao seu saldo!');
+    });
+
+    function checkPilotLevelUp() {
+      while (PlayerData.pilotXp >= PlayerData.xpForNextLevel) {
+        PlayerData.pilotXp -= PlayerData.xpForNextLevel;
+        PlayerData.pilotLevel++;
+        PlayerData.xpForNextLevel = Math.round(PlayerData.xpForNextLevel * 1.5);
+        PlayerData.gems += 6;
+
+        if (PlayerData.pilotLevel >= 20) {
+          PlayerData.pilotRank = 'ALMIRANTE SUPREMO';
+        } else if (PlayerData.pilotLevel >= 12) {
+          PlayerData.pilotRank = 'COMANDANTE DE ESQUADRÃO';
+        } else if (PlayerData.pilotLevel >= 6) {
+          PlayerData.pilotRank = 'TENENTE ESTELAR';
+        } else {
+          PlayerData.pilotRank = 'CADETE DE RECONHECIMENTO';
+        }
+      }
+    }
+
+    // RENDERIZADOR DO HANGAR COM MINIATURAS EM TEMPO REAL
+    function renderHangar() {
+      const container = document.getElementById('hangarShipList');
+      container.innerHTML = '';
+
+      PlayerData.ships.forEach(s => {
+        const isSelected = s.id === PlayerData.selectedShipId;
+        const card = document.createElement('div');
+        card.className = `glass-panel p-5 rounded-2xl flex flex-col justify-between border ${isSelected ? 'border-cyan-400 glow-cyan bg-cyan-950/40' : 'border-slate-800'}`;
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-cyan-300 font-bold uppercase">${s.role}</span>
+              <span class="text-xs font-hud font-bold text-amber-400">LVL ${s.level}/${s.maxLevel}</span>
+            </div>
+
+            <!-- Miniatura da Nave em Canvas -->
+            <div class="h-28 flex items-center justify-center bg-slate-950/70 rounded-xl border border-slate-800 mb-3 overflow-hidden relative">
+              <canvas id="shipPreview_${s.id}" width="160" height="110" class="w-full h-full object-contain"></canvas>
+            </div>
+
+            <h3 class="font-hud text-base font-black text-white">${s.name}</h3>
+            <p class="text-xs text-slate-400 mt-1 mb-4 h-10 overflow-hidden text-ellipsis">${s.desc}</p>
+
+            <div class="space-y-1.5 text-xs font-mono text-slate-300 mb-5">
+              <div class="flex justify-between"><span>BLINDAGEM (HP):</span><span class="text-rose-400 font-bold">${s.maxHp}</span></div>
+              <div class="flex justify-between"><span>ESCUDO DE PLASMA:</span><span class="text-cyan-400 font-bold">${s.maxShield}</span></div>
+              <div class="flex justify-between"><span>DANO DE DISPARO:</span><span class="text-amber-400 font-bold">${s.bulletDmg}</span></div>
+              <div class="flex justify-between"><span>VELOCIDADE:</span><span class="text-emerald-400 font-bold">${s.speed}</span></div>
+            </div>
+          </div>
+          <div>
+            ${
+              s.unlocked
+                ? `<button onclick="selectShip('${s.id}')" class="w-full py-3 ${isSelected ? 'bg-cyan-500 text-slate-950 font-black' : 'bg-slate-800 text-slate-200 hover:bg-slate-700'} font-hud text-xs rounded-xl transition">
+                    ${isSelected ? 'NAVE EQUIPADA' : 'EQUIPAR NAVE'}
+                   </button>`
+                : `<button onclick="unlockShip('${s.id}')" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-hud font-black text-xs rounded-xl transition">
+                    DESBLOQUEAR (${s.priceCoins} MOEDAS / ${s.priceGems} GEMAS)
+                   </button>`
+            }
+          </div>
+        `;
+        container.appendChild(card);
+
+        // Renderiza o modelo da nave no canvas individual
+        setTimeout(() => {
+          const cv = document.getElementById(`shipPreview_${s.id}`);
+          if (cv) {
+            const cx = cv.getContext('2d');
+            cx.clearRect(0, 0, cv.width, cv.height);
+            drawShipModel(cx, s.id, cv.width / 2, cv.height / 2, 1.2, 0, false);
+          }
+        }, 30);
+      });
+    }
+
+    window.selectShip = function(id) {
+      audioMgr.playSfx('click');
+      PlayerData.selectedShipId = id;
+      savePlayerData();
+      renderHangar();
+      renderShipUpgrades();
+    };
+
+    window.unlockShip = function(id) {
+      const ship = PlayerData.ships.find(s => s.id === id);
+      if (!ship) return;
+      if (PlayerData.coins >= ship.priceCoins && PlayerData.gems >= ship.priceGems) {
+        PlayerData.coins -= ship.priceCoins;
+        PlayerData.gems -= ship.priceGems;
+        ship.unlocked = true;
+        PlayerData.selectedShipId = id;
+        audioMgr.playSfx('buy');
+        savePlayerData();
+        renderHangar();
+        renderShipUpgrades();
+      } else {
+        audioMgr.playSfx('error');
+      }
+    };
+
+    // RENDERIZADOR DA LOJA DE SUPRIMENTOS GLOBAIS
+    function renderStore() {
+      const grid = document.getElementById('storeUpgradesGrid');
+      grid.innerHTML = '';
+
+      const upgrades = [
+        {
+          id: 'magnet',
+          name: 'ÍMÃ GRAVITACIONAL',
+          desc: 'Amplia o raio de coleta de moedas, gemas e drops no setor.',
+          level: PlayerData.upgrades.magnetLevel,
+          cost: PlayerData.upgrades.magnetLevel * 450
+        },
+        {
+          id: 'shieldRegen',
+          name: 'GERADOR DE ESCUDO',
+          desc: 'Aumenta a taxa contínua de regeneração de escudo de plasma.',
+          level: PlayerData.upgrades.shieldRegenLevel,
+          cost: PlayerData.upgrades.shieldRegenLevel * 650
+        },
+        {
+          id: 'crit',
+          name: 'SISTEMA CRÍTICO QUANTUM',
+          desc: 'Concede chance permanente de disparar feixes com dano duplicado.',
+          level: PlayerData.upgrades.criticalChanceLevel,
+          cost: PlayerData.upgrades.criticalChanceLevel * 900
+        }
+      ];
+
+      upgrades.forEach(u => {
+        const item = document.createElement('div');
+        item.className = 'glass-panel p-4 rounded-xl flex flex-col justify-between border-slate-800';
+        item.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h4 class="font-hud font-bold text-sm text-slate-100">${u.name}</h4>
+              <span class="text-xs font-mono text-cyan-400 font-bold">LVL ${u.level}</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">${u.desc}</p>
+          </div>
+          <button onclick="buyGlobalUpgrade('${u.id}', ${u.cost})" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-hud font-bold text-xs rounded-lg transition border border-amber-500/20">
+            MELHORAR (${u.cost} MOEDAS)
+          </button>
+        `;
+        grid.appendChild(item);
+      });
+    }
+
+    window.buyGlobalUpgrade = function(type, cost) {
+      if (PlayerData.coins >= cost) {
+        PlayerData.coins -= cost;
+        if (type === 'magnet') PlayerData.upgrades.magnetLevel++;
+        if (type === 'shieldRegen') PlayerData.upgrades.shieldRegenLevel++;
+        if (type === 'crit') PlayerData.upgrades.criticalChanceLevel++;
+        audioMgr.playSfx('buy');
+        savePlayerData();
+        renderStore();
+      } else {
+        audioMgr.playSfx('error');
+      }
+    };
+
+    // OFICINA DE UPGRADES ESPECÍFICOS DA NAVE
+    function renderShipUpgrades() {
+      const ship = PlayerData.ships.find(s => s.id === PlayerData.selectedShipId) || PlayerData.ships[0];
+      document.getElementById('upgradeShipName').textContent = ship.name;
+      document.getElementById('upgradeShipRole').textContent = ship.role;
+      document.getElementById('upgradeShipLvlBadge').textContent = `MK-${ship.level} (MAX MK-${ship.maxLevel})`;
+
+      const cv = document.getElementById('upgradePreviewCanvas');
+      if (cv) {
+        const cx = cv.getContext('2d');
+        cx.clearRect(0, 0, cv.width, cv.height);
+        drawShipModel(cx, ship.id, cv.width / 2, cv.height / 2, 1.1, 0, false);
+      }
+
+      const grid = document.getElementById('shipSpecificUpgradesGrid');
+      grid.innerHTML = '';
+
+      const upgradeCost = ship.level * 1200;
+      const isMaxed = ship.level >= ship.maxLevel;
+
+      const upgrades = [
+        { name: 'REFORÇO DO CASCO', desc: '+25 Pontos de Vida Máxima' },
+        { name: 'CALIBRAGEM DO ESCUDO', desc: '+20 Capacidade de Escudo' },
+        { name: 'TURBO CANHÕES', desc: '+8 Dano por Disparo' },
+        { name: 'PROPULSORES HIPERESPAÇIAIS', desc: '+0.8 Velocidade de Manobra' }
+      ];
+
+      upgrades.forEach(u => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel p-4 rounded-xl flex items-center justify-between border-slate-800';
+        card.innerHTML = `
+          <div>
+            <h4 class="font-hud text-sm font-bold text-white">${u.name}</h4>
+            <span class="text-xs text-slate-400">${u.desc}</span>
+          </div>
+          <button onclick="upgradeActiveShip(${upgradeCost})" ${isMaxed ? 'disabled' : ''} class="px-4 py-2 ${isMaxed ? 'bg-slate-800 text-slate-500' : 'bg-emerald-600 hover:bg-emerald-500 text-white'} font-hud text-xs font-bold rounded-lg transition">
+            ${isMaxed ? 'NÍVEL MÁXIMO' : `UPGRADE (${upgradeCost} C)`}
+          </button>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    window.upgradeActiveShip = function(cost) {
+      const ship = PlayerData.ships.find(s => s.id === PlayerData.selectedShipId);
+      if (!ship || ship.level >= ship.maxLevel) return;
+
+      if (PlayerData.coins >= cost) {
+        PlayerData.coins -= cost;
+        ship.level++;
+        ship.maxHp += 25;
+        ship.maxShield += 20;
+        ship.bulletDmg += 8;
+        ship.speed += 0.8;
+        audioMgr.playSfx('buy');
+        savePlayerData();
+        renderShipUpgrades();
+        renderHangar();
+      } else {
+        audioMgr.playSfx('error');
+      }
+    };
+
+    function updateUiDisplays() {
+      document.getElementById('menuCoinsText').textContent = PlayerData.coins;
+      document.getElementById('menuGemsText').textContent = PlayerData.gems;
+      document.getElementById('menuHighScoreText').textContent = String(PlayerData.highScore).padStart(6, '0');
+      document.getElementById('menuPilotName').textContent = PlayerData.pilotName;
+      document.getElementById('menuPilotLevel').textContent = PlayerData.pilotLevel;
+      document.getElementById('menuPilotRankBadge').textContent = PlayerData.pilotRank || 'RANK I';
+
+      const xpPct = (PlayerData.pilotXp / PlayerData.xpForNextLevel) * 100;
+      document.getElementById('menuPilotXpBar').style.width = `${Math.min(100, xpPct)}%`;
+
+      document.getElementById('profileNameDisplay').textContent = PlayerData.pilotName;
+      document.getElementById('profileRankTitle').textContent = `PATENTE: ${PlayerData.pilotRank || 'CADETE DE COMBATE'}`;
+      document.getElementById('profileLevelText').textContent = PlayerData.pilotLevel;
+      document.getElementById('profileXpProgress').style.width = `${Math.min(100, xpPct)}%`;
+      document.getElementById('profileXpRatio').textContent = `${PlayerData.pilotXp} / ${PlayerData.xpForNextLevel} XP`;
+      document.getElementById('statKills').textContent = PlayerData.statKills;
+      document.getElementById('statBosses').textContent = PlayerData.statBosses;
+      document.getElementById('statMissions').textContent = PlayerData.statMissions;
+      document.getElementById('statTotalCoins').textContent = PlayerData.statTotalCoins;
+      document.getElementById('hudBombCount').textContent = PlayerData.bombsOwned;
+    }
+
+    function closeCurrentModal() {
+      audioMgr.playSfx('click');
+      document.getElementById('hangarModal').classList.add('hidden');
+      document.getElementById('storeModal').classList.add('hidden');
+      document.getElementById('upgradesModal').classList.add('hidden');
+      document.getElementById('onlineModal').classList.add('hidden');
+      document.getElementById('pilotModal').classList.add('hidden');
+      document.getElementById('copilotModal').classList.add('hidden');
+      document.getElementById('settingsModal').classList.add('hidden');
+      audioMgr.playMusic('main-menu');
+    }
+    window.closeCurrentModal = closeCurrentModal;
+
+    // NAVEGAÇÃO DOS MENUS
+    document.getElementById('navBtnHangar').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      renderHangar();
+      document.getElementById('hangarModal').classList.remove('hidden');
+    });
+
+    document.getElementById('navBtnStore').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      renderStore();
+      document.getElementById('storeModal').classList.remove('hidden');
+      audioMgr.playMusic('store-bkg');
+    });
+
+    document.getElementById('navBtnUpgrades').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      renderShipUpgrades();
+      document.getElementById('upgradesModal').classList.remove('hidden');
+    });
+
+    document.getElementById('navBtnOnline').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      document.getElementById('onlineModal').classList.remove('hidden');
+    });
+
+    document.getElementById('navBtnPilot').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      updateUiDisplays();
+      document.getElementById('pilotModal').classList.remove('hidden');
+    });
+
+    document.getElementById('navBtnCopilot').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      document.getElementById('copilotModal').classList.remove('hidden');
+    });
+
+    document.getElementById('navBtnConfig').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      document.getElementById('settingsModal').classList.remove('hidden');
+    });
+
+    // ABAS DO MODO ONLINE
+    const tabLobby = document.getElementById('tabBtnLobby');
+    const tabCreate = document.getElementById('tabBtnCreateRoom');
+    const tabRank = document.getElementById('tabBtnRanking');
+    const viewLobby = document.getElementById('onlineLobbyView');
+    const viewCreate = document.getElementById('onlineCreateView');
+    const viewRank = document.getElementById('onlineRankingView');
+
+    tabLobby.addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      viewLobby.classList.remove('hidden');
+      viewCreate.classList.add('hidden');
+      viewRank.classList.add('hidden');
+    });
+
+    tabCreate.addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      viewLobby.classList.add('hidden');
+      viewCreate.classList.remove('hidden');
+      viewRank.classList.add('hidden');
+    });
+
+    tabRank.addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      viewLobby.classList.add('hidden');
+      viewCreate.classList.add('hidden');
+      viewRank.classList.remove('hidden');
+    });
+
+    window.mockJoinRoom = function(name) {
+      audioMgr.playSfx('copilot-radio');
+      alert(`Conectando à frequência de "${name}"... Inicializando enlace neural com segundo piloto!`);
+    };
+
+    document.getElementById('btnQuickMatch').addEventListener('click', () => {
+      audioMgr.playSfx('copilot-radio');
+      alert('Buscando piloto correspondente na rede federativa (24ms)... Sala encontrada! Iniciando Co-op.');
+    });
+
+    document.getElementById('btnJoinWithCode').addEventListener('click', () => {
+      const code = document.getElementById('inputRoomCode').value.trim();
+      if (code) {
+        audioMgr.playSfx('succes');
+        alert(`Conectando à sala privada [${code}]... Sincronizado com sucesso!`);
+      } else {
+        audioMgr.playSfx('error');
+      }
+    });
+
+    document.getElementById('btnConfirmCreateRoom').addEventListener('click', () => {
+      audioMgr.playSfx('succes');
+      alert('Sala estelar criada com sucesso! Código gerado: [ORION-88]. Convide seu copiloto.');
+    });
+
+    // CONTROLES DE AJUSTES E CONFIGURAÇÕES
+    document.getElementById('cfgMusicVolume').addEventListener('input', (e) => {
+      PlayerData.settings.musicVol = e.target.value / 100;
+      audioMgr.setVolumes(PlayerData.settings.musicVol, PlayerData.settings.sfxVol);
+      savePlayerData();
+    });
+
+    document.getElementById('cfgSfxVolume').addEventListener('input', (e) => {
+      PlayerData.settings.sfxVol = e.target.value / 100;
+      audioMgr.setVolumes(PlayerData.settings.musicVol, PlayerData.settings.sfxVol);
+      savePlayerData();
+    });
+
+    document.getElementById('cfgScreenShake').addEventListener('change', (e) => {
+      PlayerData.settings.screenShake = e.target.checked;
+      savePlayerData();
+    });
+
+    document.getElementById('cfgAutoFire').addEventListener('change', (e) => {
+      PlayerData.settings.autoFire = e.target.checked;
+      savePlayerData();
+    });
+
+    document.getElementById('cfgControlMode').addEventListener('change', (e) => {
+      PlayerData.settings.controlMode = e.target.value;
+      savePlayerData();
+    });
+
+    document.getElementById('cfgSensitivity').addEventListener('input', (e) => {
+      PlayerData.settings.sensitivity = parseInt(e.target.value, 10);
+      savePlayerData();
+    });
+
+    document.getElementById('cfgDamageNumbers').addEventListener('change', (e) => {
+      PlayerData.settings.damageNumbers = e.target.checked;
+      savePlayerData();
+    });
+
+    document.getElementById('cfgShowFps').addEventListener('change', (e) => {
+      PlayerData.settings.showFps = e.target.checked;
+      if (!e.target.checked) document.getElementById('hudFpsCounter').classList.add('hidden');
+      savePlayerData();
+    });
+
+    document.getElementById('cfgParticlesQuality').addEventListener('change', (e) => {
+      PlayerData.settings.particlesQuality = e.target.value;
+      savePlayerData();
+    });
+
+    // SISTEMA DE PAUSA
+    function pauseGame() {
+      if (game.state === 'PLAYING') {
+        game.state = 'PAUSED';
+        audioMgr.playSfx('click');
+        document.getElementById('pauseModal').classList.remove('hidden');
+      }
+    }
+
+    document.getElementById('btnPause').addEventListener('click', pauseGame);
+
+    document.getElementById('btnResumeGame').addEventListener('click', () => {
+      if (game.state === 'PAUSED') {
+        game.state = 'PLAYING';
+        audioMgr.playSfx('click');
+        document.getElementById('pauseModal').classList.add('hidden');
+      }
+    });
+
+    document.getElementById('btnRestartGame').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      game.startMission();
+    });
+
+    document.getElementById('btnQuitToMenu').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      game.state = 'MENU';
+      document.getElementById('pauseModal').classList.add('hidden');
+      document.getElementById('gameHud').classList.add('hidden');
+      document.getElementById('mainMenuScreen').classList.remove('hidden');
+      audioMgr.playMusic('main-menu');
+    });
+
+    document.getElementById('btnPlayMain').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      game.startMission();
+    });
+
+    document.getElementById('btnEndPlayAgain').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      game.startMission();
+    });
+
+    document.getElementById('btnEndReturnMenu').addEventListener('click', () => {
+      audioMgr.playSfx('click');
+      game.state = 'MENU';
+      document.getElementById('endGameModal').classList.add('hidden');
+      document.getElementById('mainMenuScreen').classList.remove('hidden');
+      audioMgr.playMusic('main-menu');
+    });
+
+    // INICIALIZAÇÃO E PRÉ-CARREGAMENTO ROBUSTO
+    window.addEventListener('load', async () => {
+      updateUiDisplays();
+
+      const progressBar = document.getElementById('loadProgressBar');
+      const statusText = document.getElementById('loadStatusText');
+      const startBtn = document.getElementById('btnStartGame');
+
+      await audioMgr.preloadAll((pct) => {
+        const percentVal = Math.round(pct * 100);
+        progressBar.style.width = `${percentVal}%`;
+        statusText.textContent = `INDEXANDO BANCO DE ÁUDIOS E CHASSIS (${percentVal}%)...`;
+      });
+
+      progressBar.style.width = '100%';
+      statusText.textContent = 'TODOS OS SISTEMAS SINCRONIZADOS!';
+      startBtn.classList.remove('hidden');
+
+      startBtn.addEventListener('click', () => {
+        audioMgr.initContext();
+        audioMgr.playSfx('succes');
+        document.getElementById('introScreen').style.opacity = '0';
+        setTimeout(() => {
+          document.getElementById('introScreen').classList.add('hidden');
+          document.getElementById('mainMenuScreen').classList.remove('hidden');
+          game.state = 'MENU';
+          audioMgr.playMusic('main-menu');
+        }, 600);
+      });
+
+      gameLoop();
+    });
+  </script>
+</body>
+</html>
